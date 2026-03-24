@@ -124,15 +124,15 @@ Modul_306_A_Groupe_Planwerk/
 │   │   ├── style.css                   # Stylesheet
 │   │   ├── script.js                   # Frontend-Logik
 │   │   └── uploads/                    # Hochgeladene Profilbilder
+│   │   
 │   │
 │   ├── server.js                       # Hauptserver
 │   ├── hash.js                         # Hash-Funktionen
 │   ├── package.json                    # Abhängigkeiten
 │   ├── package-lock.json               # Abhängigkeiten (gesperrt)
 │   └── .env                            # Umgebungsvariablen (nicht im Repo)
-│
-├── .gitignore                          # Git-Ignore-Datei
-└── README.md                           # Diese Datei
+│   ├── .gitignore                      # Git-Ignore-Datei
+│   └── README.md                       # Diese Datei
 ```
 
 
