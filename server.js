@@ -6,6 +6,14 @@ require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
+// Add to server.js
+const session = require("express-session");
+
+app.use(session({
+    secret: "tictactoe_secret",
+    resave: false,
+    saveUninitialized: false
+}));
 
 // Add to server.js
 const mongoose = require("mongoose");
