@@ -15,6 +15,9 @@ const bcrypt = require("bcrypt");
 // Add to server.js
 const multer = require("multer");
 const path = require("path");
+// Replace the http server setup with socket.io
+const { Server } = require("socket.io");
+const io = new Server(server);
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, "public/uploads"),
@@ -121,6 +124,14 @@ app.post("/login", async (req, res) => {
 
 app.get("/logout", (req, res) => {
     req.session.destroy(() => res.redirect("/login.html"));
+});
+// Add socket.io connection handling
+io.on("connection", (socket) => {
+    console.log("User connected:", socket.id);
+
+    socket.on("disconnect", () => {
+        console.log("User disconnected:", socket.id);
+    });
 });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log("Server running on port " + PORT));
