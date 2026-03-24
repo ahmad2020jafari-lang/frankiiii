@@ -1,78 +1,91 @@
-# Modul_306_A_Groupe_Planwerk
 # Tic-Tac-Toe Online Spiel
-Unsere Groupe sind Tobias Zimmermann, Marc Greub, Saathujan Selvasingham, Ahmad Jafari, und wir haben uns für Aufgabe 2 Game (Tic-Tac-Toe) entschieden.
 
-## Projektübersicht:
-Dieses Projekt ist ein Online Tic-Tac-Toe Spiel, das mit modernen Webtechnologien entwickelt wurde. Die Anwendung ermöglicht es Benutzern, ein Konto zu erstellen, sich anzumelden und in Echtzeit gegen andere Spieler zu spielen.
+## 👥 Gruppe
+- Tobias Zimmermann
+- Marc Greub
+- Saathujan Selvasingham
+- Ahmad Jafari
 
-Falls kein zweiter Spieler innerhalb einer bestimmten Zeit verfügbar ist, startet das Spiel automatisch gegen eine KI (AI), sodass der Benutzer jederzeit spielen kann.
+Wir haben uns für **Aufgabe 2 - Game (Tic-Tac-Toe)** entschieden.
 
-Das Projekt wurde als Gruppenprojekt entwickelt und demonstriert die Umsetzung eines Full-Stack-Webprojekts mit JavaScript, Node.js und MongoDB.
+---
 
-## Funktionen:
-### Benutzerregistrierung und Login
-Die Anwendung enthält ein Authentifizierungssystem mit E-Mail-Verifikation.
+## 📋 Projektübersicht
+Dieses Projekt ist ein **Online Tic-Tac-Toe Spiel**, das mit modernen Webtechnologien entwickelt wurde. Die Anwendung ermöglicht es Benutzern, ein Konto zu erstellen, sich anzumelden und in Echtzeit gegen andere Spieler zu spielen.
 
-Benutzer können ein Konto mit ihrer Gmail-Adresse erstellen
+Falls kein zweiter Spieler innerhalb einer bestimmten Zeit verfügbar ist, startet das Spiel automatisch gegen eine **KI (Künstliche Intelligenz)**, sodass der Benutzer jederzeit spielen kann.
 
-Nach der Registrierung wird ein 6-stelliger Code per E-Mail gesendet
+Das Projekt wurde als **Gruppenprojekt** entwickelt und demonstriert die Umsetzung eines Full-Stack-Webprojekts mit JavaScript, Node.js und MongoDB.
 
-Dieser Code wird mit Nodemailer verschickt
+---
 
-Der Benutzer kann diesen Code anschließend als Passwort beim Login verwenden
+## 🎮 Funktionen
 
-Sensible Daten wie E-Mail-Zugangsdaten werden mit dotenv über Umgebungsvariablen verwaltet.
+### 🔐 Benutzerregistrierung und Login
+Die Anwendung enthält ein Authentifizierungssystem mit E-Mail-Verifikation:
 
-Echtzeit Multiplayer Spiel
+- Benutzer können ein Konto mit ihrer **Gmail-Adresse** erstellen
+- Nach der Registrierung wird ein **6-stelliger Code** per E-Mail gesendet
+- Dieser Code wird mit **Nodemailer** verschickt
+- Der Benutzer kann diesen Code anschließend als **Passwort** beim Login verwenden
+- Sensible Daten wie E-Mail-Zugangsdaten werden mit **dotenv** über Umgebungsvariablen verwaltet
 
-Das Spiel unterstützt Echtzeit-Multiplayer-Funktionalität mithilfe von Socket.IO.
+### 👥 Echtzeit Multiplayer Spiel
+Das Spiel unterstützt Echtzeit-Multiplayer-Funktionalität mithilfe von **Socket.IO**.
 
-## Jede Spielrunde beinhaltet:
-
+**Jede Spielrunde beinhaltet:**
 - Zwei Spieler
 - Benutzername
 - Profilbild
 - Live-Spielbrett
 - Anzeige des Spielresultats
 
-Die Serverlogik wurde mit Express auf Node.js implementiert.
+Die Serverlogik wurde mit **Express** auf **Node.js** implementiert.
 
-## KI-Gegner (AI):
+### 🤖 KI-Gegner (AI)
+- Wenn innerhalb von **10 Sekunden** kein zweiter Spieler dem Spiel beitritt, startet automatisch ein Spiel gegen eine KI
+- Dadurch können Spieler jederzeit ein Spiel starten, auch wenn gerade kein anderer Spieler online ist
 
-Wenn innerhalb von 10 Sekunden kein zweiter Spieler dem Spiel beitritt, startet automatisch ein Spiel gegen eine KI.
+### 📊 Spielverlauf (Match History)
+Alle Spiele werden in der Datenbank gespeichert mit **MongoDB**.
 
-Dadurch können Spieler jederzeit ein Spiel starten, auch wenn gerade kein anderer Spieler online ist.
+**Gespeichert werden unter anderem:**
+- Profilbild
+- Spieler
+- Ergebnis (Gewonnen/Verloren)
 
-Spielverlauf (Match History)
-Alle Spiele werden in der Datenbank gespeichert mit MongoDB.
-Gespeichert werden unter anderem:
+Der Benutzer kann seine **Spielhistorie** einsehen, in der alle bisherigen Matches angezeigt werden.
 
-Profile Photo
-Spieler
-Ergebnis (Gewonnen)
-
-Der Benutzer kann seine Spielhistorie einsehen, in der alle bisherigen Matches angezeigt werden.
-
-## Spielerstatistiken:
+### 📈 Spielerstatistiken
 Im Profil jedes Spielers werden folgende Informationen angezeigt:
-
 - Benutzername
 - Profilbild
 - Anzahl der Siege
 - Spielergebnisse
 
-Jeder Sieg wird automatisch gezählt und wird wer daran ist angezeigt.
+Jeder Sieg wird automatisch gezählt und dem jeweiligen Spieler zugeordnet.
 
-## Verwendete Technologien:
+---
 
-### Backend:
-Node.js
-Express
-MongoDB
-Socket.IO
-Nodemailer
-dotenv
-### Frontend:
-HTML
-CSS
-JavaScript 
+## 🛠️ Verwendete Technologien
+
+### Backend
+| Technologie | Verwendung |
+|------------|-----------|
+| Node.js | Server-Umgebung |
+| Express | Web-Framework |
+| MongoDB | Datenbank |
+| Socket.IO | Echtzeit-Kommunikation |
+| Nodemailer | E-Mail-Versand |
+| dotenv | Umgebungsvariablen |
+
+### Frontend
+| Technologie | Verwendung |
+|------------|-----------|
+| HTML | Struktur |
+| CSS | Styling |
+| JavaScript | Interaktivität |
+
+---
+
+## 📁 Projektstruktur
