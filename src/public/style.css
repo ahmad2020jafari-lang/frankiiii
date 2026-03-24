@@ -1,5 +1,5 @@
 /* =======================
-   Body
+   BODY
 ======================= */
 
 body {
@@ -9,72 +9,132 @@ body {
     color: white;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
     min-height: 100vh;
 }
 
-
 /* =======================
-   LOGIN / SIGNUP
+   LOGIN / SIGNUP CONTAINER
 ======================= */
 
 .login-container {
-    width: 350px;
-    margin: 60px auto;
+    width: 380px;
+    margin: 20px auto;
     padding: 40px;
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 15px;
+    border-radius: 20px;
     backdrop-filter: blur(10px);
-    text-align: center;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
 }
 
 .login-container h2 {
-    margin-bottom: 20px;
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+    font-size: 28px;
 }
 
-.login-container input {
-    display: block;
-    width: 90%;
-    margin: 10px auto;
-    padding: 10px;
-    border-radius: 8px;
+/* Input fields */
+.login-container input[type="text"],
+.login-container input[type="email"],
+.login-container input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
     border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #e5e7eb;
+    box-sizing: border-box;
 }
 
-.login-container button {
+.login-container input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #5dade2;
+}
+
+/* File upload section */
+.file-label {
+    display: block;
+    margin: 15px 0 8px 0;
+    font-weight: 500;
+    text-align: center;
+    color: white;
+}
+
+.file-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.file-btn {
     padding: 10px 20px;
-    margin-top: 10px;
     background: #00c6ff;
+    color: white;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    color: white;
-    font-weight: bold;
-    transition: 0.3s;
-    width: 335px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
 }
 
-.login-container button:hover {
-    background: #00a0cc;
+.file-btn:hover {
+    background: #4fa3d1;
+    transform: translateY(-2px);
 }
 
-.login-button-link {
-    display: inline-block;
-    text-decoration: none;
-    padding: 8px 20px;
-    margin-top: 10px;
+#fileName {
+    font-size: 14px;
+    color: #e5e7eb;
+    flex: 1;
+    word-break: break-word;
+}
+
+/* Hide the original file input */
+#profilePic {
+    display: none !important;
+}
+
+/* Submit button */
+.btt-sub {
+    width: 100%;
+    padding: 12px;
     background: #00c6ff;
-    border-radius: 8px;
     color: white;
-    width: 297px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
 }
 
-.file-label {
-    font-size: 0.9em;
+.btt-sub:hover {
+    background: #00a0cc;
+    transform: translateY(-2px);
 }
 
+/* Login link button */
+.login-button-link {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    padding: 12px;
+    margin-top: 15px;
+    background: #00c6ff;
+    color: white;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
 
+.login-button-link:hover {
+    background: #00a0cc;
+    transform: translateY(-2px);
+}
 
 /* =======================
    GAME CONTAINER
@@ -84,7 +144,6 @@ body {
     text-align: center;
     padding: 20px;
 }
-
 
 /* =======================
    PLAYERS
@@ -112,7 +171,6 @@ body {
     margin-bottom: 10px;
 }
 
-
 /* =======================
    NEON BOARD
 ======================= */
@@ -132,25 +190,15 @@ body {
     border-radius: 12px;
     position: relative;
     cursor: pointer;
-
-    box-shadow:
-        0 0 10px #00eaff,
-        inset 0 0 10px #00eaff;
-
+    box-shadow: 0 0 10px #00eaff, inset 0 0 10px #00eaff;
     transition: 0.2s;
 }
 
 .cell:hover {
-    box-shadow:
-        0 0 20px #00eaff,
-        0 0 40px #00eaff;
+    box-shadow: 0 0 20px #00eaff, 0 0 40px #00eaff;
 }
 
-
-/* =======================
-   X DRAWING
-======================= */
-
+/* X DRAWING */
 .cell.x::before,
 .cell.x::after {
     content: "";
@@ -171,11 +219,7 @@ body {
     transform: rotate(-45deg);
 }
 
-
-/* =======================
-   O DRAWING
-======================= */
-
+/* O DRAWING */
 .cell.o::before {
     content: "";
     position: absolute;
@@ -188,30 +232,22 @@ body {
     box-shadow: 0 0 10px #ff00ff;
 }
 
-
-/* =======================
-   WINNER ANIMATION
-======================= */
-
+/* WINNER ANIMATION */
 .winner {
     animation: winnerGlow 0.7s infinite alternate;
 }
 
 @keyframes winnerGlow {
     from {
-        box-shadow: 0 0 10px #00ff88
+        box-shadow: 0 0 10px #00ff88;
     }
 
     to {
-        box-shadow: 0 0 30px #00ff88
+        box-shadow: 0 0 30px #00ff88;
     }
 }
 
-
-/* =======================
-   BUTTONS
-======================= */
-
+/* BUTTONS */
 .bottom-buttons {
     margin-top: 20px;
 }
@@ -227,11 +263,7 @@ body {
     cursor: pointer;
 }
 
-
-/* =======================
-   MATCH HISTORY
-======================= */
-
+/* MATCH HISTORY */
 .history {
     width: 300px;
     margin: 20px auto;
@@ -248,4 +280,46 @@ body {
 .history li {
     padding: 6px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* =======================
+   RESPONSIVE DESIGN
+======================= */
+
+@media (max-width: 480px) {
+    .login-container {
+        width: 90%;
+        margin: 40px auto;
+        padding: 25px;
+    }
+
+    .file-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .file-btn {
+        width: 100%;
+    }
+
+    #fileName {
+        text-align: center;
+    }
+
+    .scoreboard {
+        width: 100%;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .board {
+        grid-template-columns: repeat(3, 80px);
+        grid-template-rows: repeat(3, 80px);
+        gap: 8px;
+    }
+
+    .cell {
+        width: 80px;
+        height: 80px;
+    }
 }

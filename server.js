@@ -48,8 +48,8 @@ app.use(session({
 
 // MongoDB Connection
 mongoose.connect("mongodb+srv://PlanwerkMaster:CsBeAhura@planwerkmaster.cncawku.mongodb.net/tictactoe?retryWrites=true&w=majority")
-    .then(() => console.log("✅ MongoDB Connected"))
-    .catch(err => console.log("❌ MongoDB Error:", err));
+    .then(() => console.log(" MongoDB Connected"))
+    .catch(err => console.log(" MongoDB Error:", err));
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -72,9 +72,9 @@ const transporter = nodemailer.createTransport({
 
 transporter.verify(function (error, success) {
     if (error) {
-        console.log("❌ Email server error:", error);
+        console.log("Email server error:", error);
     } else {
-        console.log("✅ Email server is ready");
+        console.log("Email server is ready");
     }
 });
 
