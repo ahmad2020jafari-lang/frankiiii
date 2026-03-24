@@ -4,8 +4,7 @@
     "description": "Professional TicTacToe with login, AI, avatars, scoreboard",
     "main": "server.js",
     "scripts": {
-        "start": "nodemon server.js",
-        "dev": "nodemon server.js"
+        "start": "nodemon server.js"
     },
     "dependencies": {
         "bcrypt": "^5.1.1",
@@ -21,5 +20,9 @@
     },
     "devDependencies": {
         "nodemon": "^3.1.14"
-    }
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs"
 }
