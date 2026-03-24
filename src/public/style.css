@@ -1,0 +1,127 @@
+/* =======================
+   BODY
+======================= */
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+
+/* =======================
+   CARD CONTAINER
+======================= */
+
+.login-container {
+    width: 350px;
+    margin: 60px auto;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    /* text-align: center; */
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+
+/* =======================
+   TITLE
+======================= */
+
+.login-container h2 {
+    color: #e5e7eb;
+    font-size: 28px;
+    margin-bottom: 30px;
+}
+
+
+/* =======================
+   INPUTS
+======================= */
+
+.login-container input {
+    width: 90%;
+    padding: 12px;
+    margin-bottom: 16px;
+    border-radius: 10px;
+    border: none;
+    background: #e5e7eb;
+    font-size: 15px;
+}
+
+
+/* =======================
+   FILE UPLOAD
+======================= */
+
+.file-label {
+    display: block;
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+/* row for button + filename */
+
+.file-row {
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+}
+
+/* choose file button */
+
+.file-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    background: #e5e7eb;
+    cursor: pointer;
+    width: 40%;
+    margin-right: 20px;
+}
+
+/* file name */
+
+#fileName {
+    font-size: 14px;
+}
+
+
+/* =======================
+   BUTTONS
+======================= */
+
+.btt-sub,
+.login-button-link {
+    width: 96%;
+    padding: 10px;
+    /* margin-top: 10px; */
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 500;
+    background: #5dade2;
+    color: white;
+    cursor: pointer;
+    text-align: center;
+}
+
+/* hover */
+.login-container button:hover,
+.login-button-link:hover {
+    background: #4fa3d1;
+}
+
+/* link button fix */
+.login-button-link {
+    display: block;
+    text-decoration: none;
+    width: 90%;
+}
