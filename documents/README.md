@@ -116,13 +116,13 @@ Modul_306_A_Groupe_Planwerk/
 │   │   └── User.js                     # Benutzermodell
 │   │
 │   ├── public/                         # Frontend-Dateien
-│   │   ├── index.html                  # Startseite
+│   │   │
 │   │   ├── login.html                  # Login-Seite
 │   │   ├── signup.html                 # Registrierungsseite
 │   │   ├── game.html                   # Spiel-Seite
-│   │   ├── profile.html                # Profil-Seite
+│   │   ├
 │   │   ├── style.css                   # Stylesheet
-│   │   ├── script.js                   # Frontend-Logik
+│   │   ├── game.js                   # Frontend-Logik
 │   │   └── uploads/                    # Hochgeladene Profilbilder
 │   │   
 │   │
