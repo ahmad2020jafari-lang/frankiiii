@@ -58,5 +58,38 @@ function generateCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Add to server.js
+app.post("/signup", upload.single("profilePic"), async (req, res) => {
+    const { username, email } = req.body;
+
+    const existing = await User.findOne({
+        $or: [{ username }, { email }]
+    });
+
+    if (existing) {
+        return res.json({ success: false, message: "User exists" });
+    }
+
+    const code = generateCode();
+    const hashed = await bcrypt.hash(code, 10);
+
+    const user = new User({
+        username,
+        email,
+        password: hashed,
+        profilePic: req.file ? "/uploads/" + req.file.filename : "/user-avatar.png"
+    });
+
+    await user.save();
+
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "TicTacToe Login Code",
+        text: `Your TicTacToe password is: ${code}`
+    });
+
+    res.json({ success: true });
+});
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log("Server running on port " + PORT));
