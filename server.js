@@ -8,6 +8,9 @@ const app = express();
 const server = http.createServer(app);
 // Add to server.js
 const session = require("express-session");
+// Nodemailer
+const nodemailer = require("nodemailer");
+const bcrypt = require("bcrypt");
 
 // Add to server.js
 const multer = require("multer");
@@ -40,6 +43,20 @@ app.use(express.static("public"));
 app.get("/", (req, res) => {
     res.send("TicTacToe Server Running");
 });
+// Add to server.js
+
+
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+function generateCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log("Server running on port " + PORT));
