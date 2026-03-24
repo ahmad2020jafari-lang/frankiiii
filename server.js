@@ -91,5 +91,36 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
 
     res.json({ success: true });
 });
+// Add to server.js
+app.post("/login", async (req, res) => {
+    const { username, password } = req.body;
+
+    const user = await User.findOne({
+        username: new RegExp(`^${username}$`, "i")
+    });
+
+    if (!user) {
+        return res.json({ success: false, message: "User not found" });
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+
+    if (!match) {
+        return res.json({ success: false, message: "Wrong password" });
+    }
+
+    req.session.username = user.username;
+    req.session.profilePic = user.profilePic;
+
+    res.json({
+        success: true,
+        username: user.username,
+        profilePic: user.profilePic
+    });
+});
+
+app.get("/logout", (req, res) => {
+    req.session.destroy(() => res.redirect("/login.html"));
+});
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log("Server running on port " + PORT));
