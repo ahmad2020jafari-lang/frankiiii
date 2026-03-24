@@ -133,5 +133,44 @@ io.on("connection", (socket) => {
         console.log("User disconnected:", socket.id);
     });
 });
+// Add to server.js
+let waitingPlayer = null;
+let waitingTimeout = null;
+let rooms = {};
+
+function checkWinner(board) {
+    const combos = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+    ];
+
+    for (const [a, b, c] of combos) {
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+            return board[a];
+        }
+    }
+    return board.includes(null) ? null : "draw";
+}
+
+function smartAI(board) {
+    const empty = board.map((v, i) => v === null ? i : null).filter(v => v !== null);
+
+    // Try to win
+    for (const i of empty) {
+        board[i] = "O";
+        if (checkWinner(board) === "O") { board[i] = null; return i; }
+        board[i] = null;
+    }
+
+    // Block player win
+    for (const i of empty) {
+        board[i] = "X";
+        if (checkWinner(board) === "X") { board[i] = null; return i; }
+        board[i] = null;
+    }
+
+    return empty[Math.floor(Math.random() * empty.length)];
+}
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log("Server running on port " + PORT));
