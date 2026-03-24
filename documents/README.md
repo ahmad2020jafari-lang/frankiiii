@@ -1,6 +1,6 @@
 # Tic-Tac-Toe Online Spiel
 
-## 👥 Gruppe
+## 👥👥 Gruppe
 - Tobias Zimmermann
 - Marc Greub
 - Saathujan Selvasingham
@@ -13,7 +13,7 @@ Wir haben uns für **Aufgabe 2 - Game (Tic-Tac-Toe)** entschieden.
 ## 📋 Projektübersicht
 Dieses Projekt ist ein **Online Tic-Tac-Toe Spiel**, das mit modernen Webtechnologien entwickelt wurde. Die Anwendung ermöglicht es Benutzern, ein Konto zu erstellen, sich anzumelden und in Echtzeit gegen andere Spieler zu spielen.
 
-Falls kein zweiter Spieler innerhalb einer bestimmten Zeit verfügbar ist, startet das Spiel automatisch gegen eine **KI (Künstliche Intelligenz)**, sodass der Benutzer jederzeit spielen kann.
+Falls kein zweiter Spieler innerhalb einer bestimmten Zeit verfügbar ist, startet das Spiel automatisch gegen eine **BOT(Künstliche Intelligenz / Algoritmus)**, sodass der Benutzer jederzeit spielen kann.
 
 Das Projekt wurde als **Gruppenprojekt** entwickelt und demonstriert die Umsetzung eines Full-Stack-Webprojekts mit JavaScript, Node.js und MongoDB.
 
@@ -42,8 +42,8 @@ Das Spiel unterstützt Echtzeit-Multiplayer-Funktionalität mithilfe von **Socke
 
 Die Serverlogik wurde mit **Express** auf **Node.js** implementiert.
 
-### 🤖 KI-Gegner (AI)
-- Wenn innerhalb von **10 Sekunden** kein zweiter Spieler dem Spiel beitritt, startet automatisch ein Spiel gegen eine KI
+### 🤖 BOT / Algoritmos-Gegner (BOT)
+- Wenn innerhalb von **10 Sekunden** kein zweiter Spieler dem Spiel beitritt, startet automatisch ein Spiel gegen eine BOT
 - Dadurch können Spieler jederzeit ein Spiel starten, auch wenn gerade kein anderer Spieler online ist
 
 ### 📊 Spielverlauf (Match History)
