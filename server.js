@@ -127,10 +127,111 @@ app.get("/logout", (req, res) => {
 });
 // Add socket.io connection handling
 io.on("connection", (socket) => {
-    console.log("User connected:", socket.id);
+    socket.on("playerInfo", (data) => {
+        socket.username = data.username;
+        socket.profilePic = data.profilePic;
 
-    socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
+        if (waitingPlayer && waitingPlayer.id !== socket.id) {
+            if (waitingTimeout) clearTimeout(waitingTimeout);
+
+            const room = waitingPlayer.id + "#" + socket.id;
+            socket.join(room);
+            waitingPlayer.join(room);
+
+            rooms[room] = {
+                leftPlayer: waitingPlayer,
+                rightPlayer: socket,
+                board: Array(9).fill(null),
+                turn: "X"
+            };
+
+            io.to(room).emit("startGame", {
+                room,
+                leftPlayer: {
+                    id: waitingPlayer.id,
+                    username: waitingPlayer.username,
+                    profilePic: waitingPlayer.profilePic
+                },
+                rightPlayer: {
+                    id: socket.id,
+                    username: socket.username,
+                    profilePic: socket.profilePic
+                }
+            });
+
+            waitingPlayer = null;
+        } else {
+            waitingPlayer = socket;
+            socket.emit("waiting");
+
+            waitingTimeout = setTimeout(() => {
+                if (waitingPlayer === socket) {
+                    const room = socket.id;
+                    socket.join(room);
+                    rooms[room] = {
+                        leftPlayer: socket,
+                        rightPlayer: "AI",
+                        board: Array(9).fill(null),
+                        turn: "X"
+                    };
+
+                    socket.emit("startGame", {
+                        room,
+                        leftPlayer: {
+                            id: socket.id,
+                            username: socket.username,
+                            profilePic: socket.profilePic
+                        },
+                        rightPlayer: {
+                            id: "AI",
+                            username: "AI",
+                            profilePic: "/ai-avatar.png"
+                        }
+                    });
+
+                    waitingPlayer = null;
+                }
+            }, 5000);
+        }
+    });
+
+    socket.on("move", ({ room, index, player }) => {
+        const roomData = rooms[room];
+        if (!roomData) return;
+        if (roomData.board[index] !== null) return;
+        if (roomData.turn !== player) return;
+
+        roomData.board[index] = player;
+        roomData.turn = player === "X" ? "O" : "X";
+
+        io.to(room).emit("move", { index, player });
+
+        const winner = checkWinner(roomData.board);
+        if (winner) {
+            io.to(room).emit("gameOver", { winner });
+            return;
+        }
+
+        if (roomData.rightPlayer === "AI" && player === "X") {
+            const aiIndex = smartAI(roomData.board);
+            roomData.board[aiIndex] = "O";
+            roomData.turn = "X";
+
+            setTimeout(() => {
+                io.to(room).emit("move", { index: aiIndex, player: "O" });
+                const w2 = checkWinner(roomData.board);
+                if (w2) io.to(room).emit("gameOver", { winner: w2 });
+            }, 700);
+        }
+    });
+
+    socket.on("restart", ({ room }) => {
+        const roomData = rooms[room];
+        if (!roomData) return;
+
+        roomData.board = Array(9).fill(null);
+        roomData.turn = "X";
+        io.to(room).emit("restart");
     });
 });
 // Add to server.js
