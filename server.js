@@ -7,6 +7,13 @@ require("dotenv").config();
 const app = express();
 const server = http.createServer(app);
 
+// Add to server.js
+const mongoose = require("mongoose");
+
+mongoose.connect("mongodb+srv://PlanwerkMaster:CsBeAhura@planwerkmaster.cncawku.mongodb.net/tictactoe?retryWrites=true&w=majority")
+    .then(() => console.log("MongoDB Connected"))
+    .catch(err => console.log(err));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
