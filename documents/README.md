@@ -66,8 +66,6 @@ Im Profil jedes Spielers werden folgende Informationen angezeigt:
 Jeder Sieg wird automatisch gezählt und dem jeweiligen Spieler zugeordnet.
 
 ---
-
-## 🛠️ Verwendete Technologien
 ## 🛠️ Verwendete Technologien
 
 ### Backend
@@ -105,33 +103,37 @@ Jeder Sieg wird automatisch gezählt und dem jeweiligen Spieler zugeordnet.
 | **Session Cookies** | Authentifizierung | Sicherheitsmechanismus zur Benutzerauthentifizierung. Speichert verschlüsselte Session-Daten für eingeloggte Benutzer. |
 | **bcrypt Hashing** | Passwort-Sicherheit | Sicheres Hashen von Passwörtern mit Salt. Schützt Benutzerdaten bei einem möglichen Datenbank-Leck. |
 ## 📁 Projektstruktur
+
+```
 Modul_306_A_Groupe_Planwerk/
 │
-├── documents/ # Projektdokumentation
-│ ├── README.md # Projektdokumentation
-│ └── ... # Weitere Dokumente
+├── documents/                          # Projektdokumentation
+│   ├── README.md                       # Projektdokumentation
+│   └── ...                             # Weitere Dokumente
 │
-├── src/ # Quellcode
-│ ├── models/ # Datenbankmodelle
-│ │ └── User.js # Benutzermodell
-│ │
-│ ├── public/ # Frontend-Dateien
-│ │ ├── index.html # Startseite
-│ │ ├── login.html # Login-Seite
-│ │ ├── signup.html # Registrierungsseite
-│ │ ├── game.html # Spiel-Seite
-│ │ ├── profile.html # Profil-Seite
-│ │ ├── style.css # Stylesheet
-│ │ ├── script.js # Frontend-Logik
-│ │ └── uploads/ # Hochgeladene Profilbilder
-│ │ ├── .gitignore # Git-Ignore-Datei
-│ │ └── README.md # Diese Datei
-│ ├── server.js # Hauptserver
-│ ├── hash.js # Hash-Funktionen
-│ ├── package.json # Abhängigkeiten
-│ ├── package-lock.json # Abhängigkeiten (gesperrt)
-│ └── .env # Umgebungsvariablen (nicht im Repository)
-
+├── src/                                # Quellcode
+│   ├── models/                         # Datenbankmodelle
+│   │   └── User.js                     # Benutzermodell
+│   │
+│   ├── public/                         # Frontend-Dateien
+│   │   ├── index.html                  # Startseite
+│   │   ├── login.html                  # Login-Seite
+│   │   ├── signup.html                 # Registrierungsseite
+│   │   ├── game.html                   # Spiel-Seite
+│   │   ├── profile.html                # Profil-Seite
+│   │   ├── style.css                   # Stylesheet
+│   │   ├── script.js                   # Frontend-Logik
+│   │   └── uploads/                    # Hochgeladene Profilbilder
+│   │
+│   ├── server.js                       # Hauptserver
+│   ├── hash.js                         # Hash-Funktionen
+│   ├── package.json                    # Abhängigkeiten
+│   ├── package-lock.json               # Abhängigkeiten (gesperrt)
+│   └── .env                            # Umgebungsvariablen (nicht im Repo)
+│
+├── .gitignore                          # Git-Ignore-Datei
+└── README.md                           # Diese Datei
+```
 
 
 ---
@@ -157,6 +159,6 @@ npm start
 
 👨‍💻 Entwickler
 
-Ahmad Jafari
+### Ahmad Jafari
 
 ## Modul 306 - Projektarbeit
