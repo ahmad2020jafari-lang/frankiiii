@@ -1,81 +1,70 @@
-<!-- <!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SignUp - TicTacToe</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-
-<body>
-    <div class="login-container">
-
-        <h2>Create Account</h2>
-
-        <form id="signupForm" enctype="multipart/form-data">
-            <input name="username" placeholder="Username" required>
-            <input name="email" type="email" placeholder="Email" required>
-            <input name="password" type="password" placeholder="Password" required> 
-<label class="file-label">Upload profile picture</label>
-<div class="file-row">
-    <button type="button" class="file-btn" onclick="document.getElementById('profilePic').click()">
-        Choose file
-    </button>
-    <span id="fileName">No file selected</span>
-</div>
-<input id="profilePic" name="profilePic" type="file" accept="image/*" hidden>
-<button type="submit" class="btt-sub">Sign Up</button>
-</form>
-<br>
-<a href="/login.html" class="login-button-link">Back to Login</a>
-</div>
-</body>
-
-</html> -->
-
-///////////////////////////
-/////////////////////////
 <!DOCTYPE html>
 <html>
 
 <head>
     <meta charset="UTF-8">
     <title>Signup - TicTacToe</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
+
     <div class="login-container">
+
         <h2>Create Account</h2>
+
         <form id="signupForm" enctype="multipart/form-data">
+
             <input name="username" placeholder="Username" required>
+
             <input name="email" type="email" placeholder="Email" required>
+
+            <!-- <input name="password" type="password" placeholder="Password" required> -->
+
             <label class="file-label">Upload profile picture</label>
-            <input name="profilePic" type="file" accept="image/*">
+
+            <input id="profilePic" name="profilePic" type="file" accept="image/*" hidden>
+
             <button type="submit">Sign Up</button>
         </form>
+
+
         <br>
+
         <a href="/login.html" class="login-button-link">Back to Login</a>
+
     </div>
-    <!-- Add this script to signup.html -->
+
     <script>
+
         document.getElementById("signupForm").addEventListener("submit", async e => {
+
             e.preventDefault();
+
             const formData = new FormData(e.target);
+
             const res = await fetch("/signup", {
                 method: "POST",
                 body: formData
             });
+
             const data = await res.json();
+
             if (data.success) {
-                alert("Account created! Check your email for the password.");
+
+                alert("Account created!");
                 window.location.href = "/login.html";
+
             } else {
+
                 alert(data.message);
+
             }
+
         });
+
     </script>
+
 </body>
 
 </html>

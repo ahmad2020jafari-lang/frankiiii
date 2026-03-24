@@ -1,4 +1,7 @@
-/* Basic styling - you can add your full CSS later */
+/* =======================
+   Body
+======================= */
+
 body {
     margin: 0;
     font-family: 'Segoe UI', sans-serif;
@@ -10,6 +13,11 @@ body {
     min-height: 100vh;
 }
 
+
+/* =======================
+   LOGIN / SIGNUP
+======================= */
+
 .login-container {
     width: 350px;
     margin: 60px auto;
@@ -18,7 +26,96 @@ body {
     border-radius: 15px;
     backdrop-filter: blur(10px);
     text-align: center;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
 }
+
+.login-container h2 {
+    margin-bottom: 20px;
+}
+
+.login-container input {
+    display: block;
+    width: 90%;
+    margin: 10px auto;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+}
+
+.login-container button {
+    padding: 10px 20px;
+    margin-top: 10px;
+    background: #00c6ff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: white;
+    font-weight: bold;
+    transition: 0.3s;
+    width: 335px;
+}
+
+.login-container button:hover {
+    background: #00a0cc;
+}
+
+.login-button-link {
+    display: inline-block;
+    text-decoration: none;
+    padding: 8px 20px;
+    margin-top: 10px;
+    background: #00c6ff;
+    border-radius: 8px;
+    color: white;
+    width: 297px;
+}
+
+.file-label {
+    font-size: 0.9em;
+}
+
+
+
+/* =======================
+   GAME CONTAINER
+======================= */
+
+.game-container {
+    text-align: center;
+    padding: 20px;
+}
+
+
+/* =======================
+   PLAYERS
+======================= */
+
+.scoreboard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 650px;
+    margin: 20px auto;
+}
+
+.player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.player img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 10px;
+}
+
+
+/* =======================
+   NEON BOARD
+======================= */
 
 .board {
     display: grid;
@@ -33,13 +130,122 @@ body {
     background: #0a0a0a;
     border: 2px solid #00eaff;
     border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+
+    box-shadow:
+        0 0 10px #00eaff,
+        inset 0 0 10px #00eaff;
+
+    transition: 0.2s;
+}
+
+.cell:hover {
+    box-shadow:
+        0 0 20px #00eaff,
+        0 0 40px #00eaff;
+}
+
+
+/* =======================
+   X DRAWING
+======================= */
+
+.cell.x::before,
+.cell.x::after {
+    content: "";
+    position: absolute;
+    width: 70%;
+    height: 4px;
+    background: #00eaff;
+    top: 50%;
+    left: 15%;
+    box-shadow: 0 0 10px #00eaff;
+}
+
+.cell.x::before {
+    transform: rotate(45deg);
+}
+
+.cell.x::after {
+    transform: rotate(-45deg);
+}
+
+
+/* =======================
+   O DRAWING
+======================= */
+
+.cell.o::before {
+    content: "";
+    position: absolute;
+    width: 60%;
+    height: 60%;
+    border: 4px solid #ff00ff;
+    border-radius: 50%;
+    top: 20%;
+    left: 20%;
+    box-shadow: 0 0 10px #ff00ff;
+}
+
+
+/* =======================
+   WINNER ANIMATION
+======================= */
+
+.winner {
+    animation: winnerGlow 0.7s infinite alternate;
+}
+
+@keyframes winnerGlow {
+    from {
+        box-shadow: 0 0 10px #00ff88
+    }
+
+    to {
+        box-shadow: 0 0 30px #00ff88
+    }
+}
+
+
+/* =======================
+   BUTTONS
+======================= */
+
+.bottom-buttons {
+    margin-top: 20px;
+}
+
+.bottom-buttons button {
+    padding: 10px 20px;
+    margin: 5px;
+    border: none;
+    border-radius: 8px;
+    background: #00c6ff;
+    color: white;
+    font-weight: bold;
     cursor: pointer;
 }
 
-.scoreboard {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 650px;
+
+/* =======================
+   MATCH HISTORY
+======================= */
+
+.history {
+    width: 300px;
     margin: 20px auto;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.history ul {
+    list-style: none;
+    padding: 0;
+}
+
+.history li {
+    padding: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
