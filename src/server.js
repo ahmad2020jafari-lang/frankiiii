@@ -352,7 +352,7 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
-    console.log(`📁 Static files served from: ${path.join(__dirname, "public")}`);
-    console.log(`📝 Login page: http://localhost:${PORT}/login.html`);
+    console.log(` Server running at http://localhost:${PORT}`);
+    console.log(` Static files served from: ${path.join(__dirname, "public")}`);
+    console.log(` Login page: http://localhost:${PORT}/login.html`);
 });
