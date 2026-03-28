@@ -686,6 +686,12 @@ io.on("connection", (socket) => {
                 type
             });
         }
+        // Add this to handle call rejection
+        socket.on("callRejected", ({ room }) => {
+            if (rooms[room]) {
+                socket.to(room).emit("callRejected");
+            }
+        });
     });
 
     // Call ended handler

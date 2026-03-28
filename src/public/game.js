@@ -304,7 +304,6 @@ if (socket) {
     const callStatus = document.getElementById("callStatus");
     const callStatusText = document.getElementById("callStatusText");
     const endCallBtn = document.getElementById("endCallBtn");
-    const chatWidget = document.getElementById("chatWidget");
     const minimizeChatBtn = document.getElementById("minimizeChatBtn");
     const chatBody = document.getElementById("chatBody");
 
@@ -331,6 +330,8 @@ if (socket) {
     let isCameraOff = false;
     let pendingCandidates = [];
     let callInProgress = false;
+    let incomingCallTimer = null;
+    let callTimeout = null;
 
     const winCombos = [
         [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -388,11 +389,9 @@ if (socket) {
         // Monitor connection state
         peerConnection.oniceconnectionstatechange = () => {
             console.log("ICE connection state:", peerConnection.iceConnectionState);
-            if (peerConnection.iceConnectionState === "disconnected" ||
-                peerConnection.iceConnectionState === "failed" ||
-                peerConnection.iceConnectionState === "closed") {
+            if (peerConnection.iceConnectionState === "failed") {
                 if (callActive) {
-                    addSystemMessage("Call connection lost");
+                    addChatMessage("Call connection failed. Please try again.", "system");
                     endCall();
                 }
             }
@@ -401,12 +400,18 @@ if (socket) {
         peerConnection.onconnectionstatechange = () => {
             console.log("Connection state:", peerConnection.connectionState);
             if (peerConnection.connectionState === "connected" && callActive) {
-                callStatusText.textContent = "Call connected";
-                setTimeout(() => {
-                    if (callActive && callStatus) {
-                        callStatus.style.display = "none";
-                    }
-                }, 2000);
+                if (callStatusText) callStatusText.textContent = "Call connected";
+                if (callStatus) {
+                    setTimeout(() => {
+                        if (callActive && callStatus) {
+                            callStatus.style.display = "none";
+                        }
+                    }, 2000);
+                }
+                addChatMessage("Call connected", "system");
+            } else if (peerConnection.connectionState === "failed") {
+                addChatMessage("Call connection failed", "system");
+                endCall();
             }
         };
 
@@ -437,12 +442,7 @@ if (socket) {
             });
             localStream = null;
         }
-        if (remoteStream) {
-            remoteStream.getTracks().forEach(track => {
-                track.stop();
-            });
-            remoteStream = null;
-        }
+        remoteStream = null;
         if (localVideo && localVideo.srcObject) {
             localVideo.srcObject = null;
         }
@@ -472,6 +472,14 @@ if (socket) {
         if (toggleCameraBtn) toggleCameraBtn.innerHTML = '<i class="fas fa-video"></i>';
     }
 
+    // Clear incoming call timer
+    function clearIncomingCallTimer() {
+        if (incomingCallTimer) {
+            clearTimeout(incomingCallTimer);
+            incomingCallTimer = null;
+        }
+    }
+
     // Minimize/Maximize chat
     if (minimizeChatBtn) {
         minimizeChatBtn.addEventListener("click", () => {
@@ -489,7 +497,7 @@ if (socket) {
         });
     }
 
-    // Send message
+    // Send message - PURE CHAT ONLY (no game messages)
     function sendMessage() {
         const message = chatInput ? chatInput.value.trim() : "";
         if (message && room && !callInProgress) {
@@ -501,10 +509,10 @@ if (socket) {
                 timestamp: new Date().toLocaleTimeString()
             };
             socket.emit("chatMessage", messageData);
-            addMessageToChat(messageData, true);
+            addChatMessage(messageData.message, "own", username, profilePic, messageData.timestamp);
             if (chatInput) chatInput.value = "";
         } else if (callInProgress) {
-            addSystemMessage("Cannot send messages during an active call");
+            addChatMessage("Cannot send messages during an active call", "system");
         }
     }
 
@@ -517,65 +525,75 @@ if (socket) {
         });
     }
 
-    // Add message to chat UI
-    function addMessageToChat(data, isOwn) {
+    // Add message to chat UI - PURE CHAT ONLY
+    function addChatMessage(text, type, senderName = null, senderPic = null, timestamp = null) {
         if (!chatMessages) return;
 
         const messageDiv = document.createElement("div");
-        messageDiv.className = `chat-message ${isOwn ? 'own-message' : 'other-message'}`;
 
-        if (!isOwn) {
+        if (type === "system") {
+            messageDiv.className = "system-message";
+            messageDiv.textContent = text;
+        } else if (type === "own") {
+            messageDiv.className = "chat-message own-message";
+            const contentDiv = document.createElement("div");
+            contentDiv.className = "message-content";
+
+            const textSpan = document.createElement("div");
+            textSpan.className = "message-text";
+            textSpan.textContent = text;
+            contentDiv.appendChild(textSpan);
+
+            const timeSpan = document.createElement("div");
+            timeSpan.className = "message-time";
+            timeSpan.textContent = timestamp || new Date().toLocaleTimeString();
+            contentDiv.appendChild(timeSpan);
+
+            messageDiv.appendChild(contentDiv);
+        } else {
+            messageDiv.className = "chat-message other-message";
+
             const img = document.createElement("img");
-            img.src = data.profilePic || "/user-avatar.png";
-            img.alt = data.username;
+            img.src = senderPic || "/user-avatar.png";
+            img.alt = senderName;
             img.className = "message-avatar";
             messageDiv.appendChild(img);
-        }
 
-        const contentDiv = document.createElement("div");
-        contentDiv.className = "message-content";
+            const contentDiv = document.createElement("div");
+            contentDiv.className = "message-content";
 
-        if (!isOwn) {
             const nameSpan = document.createElement("div");
             nameSpan.className = "message-username";
-            nameSpan.textContent = data.username;
+            nameSpan.textContent = senderName;
             contentDiv.appendChild(nameSpan);
+
+            const textSpan = document.createElement("div");
+            textSpan.className = "message-text";
+            textSpan.textContent = text;
+            contentDiv.appendChild(textSpan);
+
+            const timeSpan = document.createElement("div");
+            timeSpan.className = "message-time";
+            timeSpan.textContent = timestamp || new Date().toLocaleTimeString();
+            contentDiv.appendChild(timeSpan);
+
+            messageDiv.appendChild(contentDiv);
         }
 
-        const textSpan = document.createElement("div");
-        textSpan.className = "message-text";
-        textSpan.textContent = data.message;
-        contentDiv.appendChild(textSpan);
-
-        const timeSpan = document.createElement("div");
-        timeSpan.className = "message-time";
-        timeSpan.textContent = data.timestamp;
-        contentDiv.appendChild(timeSpan);
-
-        messageDiv.appendChild(contentDiv);
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Auto-remove system messages after 5 seconds
+        if (type === "system") {
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
     }
 
-    // Add system message
-    function addSystemMessage(text) {
-        if (!chatMessages) return;
-
-        const systemDiv = document.createElement("div");
-        systemDiv.className = "system-message";
-        systemDiv.textContent = text;
-        chatMessages.appendChild(systemDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (systemDiv.parentNode) {
-                systemDiv.remove();
-            }
-        }, 5000);
-    }
-
-    // Start call (audio or video)
+    // Start call (audio or video) - IMPROVED WITH TIMEOUT HANDLING
     async function startCall(video = false) {
         if (callActive) {
             endCall();
@@ -583,12 +601,12 @@ if (socket) {
         }
 
         if (callInProgress) {
-            addSystemMessage("A call is already in progress");
+            addChatMessage("A call is already in progress", "system");
             return;
         }
 
         if (!room || !opponentId) {
-            addSystemMessage("Cannot start call: No opponent connected");
+            addChatMessage("Cannot start call: No opponent connected", "system");
             return;
         }
 
@@ -599,6 +617,14 @@ if (socket) {
             callStatus.style.display = "flex";
             callStatusText.textContent = "Requesting permissions...";
         }
+
+        // Set timeout for call setup
+        callTimeout = setTimeout(() => {
+            if (callInProgress && !callActive) {
+                addChatMessage("Call timed out. Please try again.", "system");
+                endCall();
+            }
+        }, 30000);
 
         try {
             const constraints = {
@@ -645,16 +671,22 @@ if (socket) {
                 if (videoCallBtn) videoCallBtn.disabled = true;
             }
 
-            addSystemMessage(`Starting ${video ? 'video' : 'audio'} call...`);
+            addChatMessage(`Starting ${video ? 'video' : 'audio'} call...`, "system");
         } catch (error) {
             console.error("Error starting call:", error);
-            addSystemMessage("Could not start call. Please check camera/microphone permissions.");
+            addChatMessage("Could not start call. Please check camera/microphone permissions.", "system");
             endCall();
-            callInProgress = false;
         }
     }
 
     function endCall() {
+        // Clear timers
+        if (callTimeout) {
+            clearTimeout(callTimeout);
+            callTimeout = null;
+        }
+        clearIncomingCallTimer();
+
         callActive = false;
         callInProgress = false;
 
@@ -672,7 +704,79 @@ if (socket) {
             socket.emit("callEnded", { room });
         }
 
-        addSystemMessage("Call ended");
+        addChatMessage("Call ended", "system");
+    }
+
+    // Accept incoming call
+    async function acceptCall(offerData) {
+        clearIncomingCallTimer();
+
+        if (callTimeout) {
+            clearTimeout(callTimeout);
+            callTimeout = null;
+        }
+
+        try {
+            const constraints = {
+                audio: true,
+                video: offerData.isVideo ? { width: { ideal: 640 }, height: { ideal: 480 } } : false
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            localStream = stream;
+
+            if (offerData.isVideo && localVideo) {
+                localVideo.srcObject = stream;
+                if (videoContainer) videoContainer.style.display = "block";
+            }
+
+            initPeerConnection();
+
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offerData.signal));
+
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+
+            socket.emit("callSignal", {
+                room: room,
+                signal: peerConnection.localDescription,
+                type: "answer",
+                isVideo: offerData.isVideo
+            });
+
+            callActive = true;
+            isVideoCall = offerData.isVideo;
+
+            if (callStatusText) callStatusText.textContent = "Call connected";
+            if (callStatus) {
+                setTimeout(() => {
+                    if (callActive && callStatus) callStatus.style.display = "none";
+                }, 2000);
+            }
+
+            if (offerData.isVideo) {
+                if (audioCallBtn) audioCallBtn.style.display = "none";
+                if (videoCallBtn) videoCallBtn.style.display = "none";
+            } else {
+                if (audioCallBtn) audioCallBtn.innerHTML = '<i class="fas fa-phone-slash"></i> End Call';
+                if (videoCallBtn) videoCallBtn.disabled = true;
+            }
+
+            addChatMessage(`${offerData.isVideo ? 'Video' : 'Audio'} call connected`, "system");
+        } catch (error) {
+            console.error("Error accepting call:", error);
+            addChatMessage("Could not accept call. Please check permissions.", "system");
+            endCall();
+        }
+    }
+
+    // Reject incoming call
+    function rejectCall() {
+        clearIncomingCallTimer();
+        addChatMessage("Call rejected", "system");
+        if (callStatus) callStatus.style.display = "none";
+        callInProgress = false;
+        socket.emit("callRejected", { room });
     }
 
     // Toggle microphone
@@ -687,7 +791,7 @@ if (socket) {
                 if (toggleMicBtn) {
                     toggleMicBtn.innerHTML = isMicMuted ? '<i class="fas fa-microphone-slash"></i>' : '<i class="fas fa-microphone"></i>';
                 }
-                addSystemMessage(isMicMuted ? "Microphone muted" : "Microphone unmuted");
+                addChatMessage(isMicMuted ? "Microphone muted" : "Microphone unmuted", "system");
             }
         }
     }
@@ -704,7 +808,7 @@ if (socket) {
                 if (toggleCameraBtn) {
                     toggleCameraBtn.innerHTML = isCameraOff ? '<i class="fas fa-video-slash"></i>' : '<i class="fas fa-video"></i>';
                 }
-                addSystemMessage(isCameraOff ? "Camera turned off" : "Camera turned on");
+                addChatMessage(isCameraOff ? "Camera turned off" : "Camera turned on", "system");
             }
         }
     }
@@ -735,7 +839,7 @@ if (socket) {
     // Socket event handlers
     socket.on("waiting", () => {
         if (statusText) statusText.textContent = "Waiting for opponent...";
-        addSystemMessage("Waiting for opponent...");
+        addChatMessage("Waiting for opponent...", "system");
     });
 
     socket.on("startGame", (data) => {
@@ -765,7 +869,7 @@ if (socket) {
         cells.forEach(c => c.classList.remove("x", "o", "winner"));
         updateScores();
         updateStatus();
-        addSystemMessage(`Game started! You are ${playerSymbol}. ${isMyTurn ? "Your turn" : "Opponent's turn"}`);
+        // PURE CHAT: No game messages in chat
     });
 
     socket.on("move", ({ index, player }) => {
@@ -786,25 +890,25 @@ if (socket) {
         gameActive = true;
         isMyTurn = playerSymbol === "X";
         updateStatus();
-        addSystemMessage("Game restarted!");
+        // PURE CHAT: No game messages in chat
     });
 
     socket.on("gameOver", ({ winner }) => {
         endGame(winner);
     });
 
-    // Chat messages
+    // Chat messages - PURE CHAT ONLY
     socket.on("chatMessage", (data) => {
         if (!callInProgress) {
-            addMessageToChat(data, false);
+            addChatMessage(data.message, "other", data.username, data.profilePic, data.timestamp);
         }
     });
 
-    // Call signals
+    // Call signals - IMPROVED WITH ACCEPT/REJECT
     socket.on("callSignal", async (data) => {
         try {
             if (data.type === "offer" && !callActive && !callInProgress) {
-                // Received call offer
+                // Received call offer - show notification and wait for user action
                 callInProgress = true;
                 isVideoCall = data.isVideo || false;
 
@@ -813,71 +917,58 @@ if (socket) {
                     callStatusText.textContent = `Incoming ${isVideoCall ? 'video' : 'audio'} call...`;
                 }
 
-                addSystemMessage(`Incoming ${isVideoCall ? 'video' : 'audio'} call...`);
+                addChatMessage(`${opponentName} is calling you...`, "system");
 
-                // Auto-answer after a short delay
-                setTimeout(async () => {
-                    try {
-                        const constraints = {
-                            audio: true,
-                            video: isVideoCall ? { width: { ideal: 640 }, height: { ideal: 480 } } : false
-                        };
+                // Create accept/reject buttons
+                const callNotification = document.createElement("div");
+                callNotification.className = "call-notification";
+                callNotification.innerHTML = `
+                    <div class="call-notification-content">
+                        <i class="fas fa-${isVideoCall ? 'video' : 'phone'}"></i>
+                        <span>${opponentName} is calling</span>
+                        <div class="call-actions">
+                            <button class="accept-call-btn"><i class="fas fa-check"></i> Accept</button>
+                            <button class="reject-call-btn"><i class="fas fa-times"></i> Reject</button>
+                        </div>
+                    </div>
+                `;
 
-                        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                        localStream = stream;
-
-                        if (isVideoCall && localVideo) {
-                            localVideo.srcObject = stream;
-                            if (videoContainer) videoContainer.style.display = "block";
-                        }
-
-                        initPeerConnection();
-
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
-
-                        const answer = await peerConnection.createAnswer();
-                        await peerConnection.setLocalDescription(answer);
-
-                        socket.emit("callSignal", {
-                            room: room,
-                            signal: peerConnection.localDescription,
-                            type: "answer",
-                            isVideo: isVideoCall
-                        });
-
-                        callActive = true;
-
-                        if (callStatusText) callStatusText.textContent = "Call connected";
-
-                        if (isVideoCall) {
-                            if (audioCallBtn) audioCallBtn.style.display = "none";
-                            if (videoCallBtn) videoCallBtn.style.display = "none";
-                        } else {
-                            if (audioCallBtn) audioCallBtn.innerHTML = '<i class="fas fa-phone-slash"></i> End Call';
-                            if (videoCallBtn) videoCallBtn.disabled = true;
-                        }
-
-                        setTimeout(() => {
-                            if (callActive && callStatus) callStatus.style.display = "none";
-                        }, 2000);
-
-                        addSystemMessage(`${isVideoCall ? 'Video' : 'Audio'} call connected`);
-                    } catch (error) {
-                        console.error("Error answering call:", error);
-                        addSystemMessage("Could not answer call. Please check permissions.");
-                        endCall();
-                        callInProgress = false;
+                // Auto-remove after 30 seconds
+                const notificationTimeout = setTimeout(() => {
+                    if (callNotification.parentNode) {
+                        callNotification.remove();
+                        rejectCall();
                     }
-                }, 1000);
+                }, 30000);
+
+                callNotification.querySelector(".accept-call-btn").onclick = () => {
+                    clearTimeout(notificationTimeout);
+                    callNotification.remove();
+                    acceptCall(data);
+                };
+
+                callNotification.querySelector(".reject-call-btn").onclick = () => {
+                    clearTimeout(notificationTimeout);
+                    callNotification.remove();
+                    rejectCall();
+                };
+
+                chatMessages.appendChild(callNotification);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
             } else if (data.type === "answer" && callActive && peerConnection) {
                 // Received answer to our offer
                 if (peerConnection.remoteDescription === null) {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
                     if (callStatusText) callStatusText.textContent = "Call connected";
+                    if (callTimeout) {
+                        clearTimeout(callTimeout);
+                        callTimeout = null;
+                    }
                     setTimeout(() => {
                         if (callActive && callStatus) callStatus.style.display = "none";
                     }, 2000);
-                    addSystemMessage(`${isVideoCall ? 'Video' : 'Audio'} call connected`);
+                    addChatMessage(`${isVideoCall ? 'Video' : 'Audio'} call connected`, "system");
                 }
             } else if (data.type === "candidate" && peerConnection) {
                 // Received ICE candidate
@@ -887,8 +978,7 @@ if (socket) {
                     } catch (error) {
                         console.error("Error adding ICE candidate:", error);
                     }
-                } else if (peerConnection) {
-                    // Store candidate for later
+                } else {
                     pendingCandidates.push(new RTCIceCandidate(data.signal));
                 }
             }
@@ -899,10 +989,17 @@ if (socket) {
 
     socket.on("callEnded", () => {
         if (callActive) {
-            addSystemMessage("Opponent ended the call");
+            addChatMessage("Opponent ended the call", "system");
             endCall();
         }
         callInProgress = false;
+    });
+
+    socket.on("callRejected", () => {
+        if (callInProgress && !callActive) {
+            addChatMessage("Call was rejected", "system");
+            endCall();
+        }
     });
 
     cells.forEach((cell, index) => {
@@ -935,7 +1032,7 @@ if (socket) {
         if (winner === "draw") {
             if (statusText) statusText.textContent = "Draw";
             addHistory("Draw");
-            addSystemMessage("Game ended in a draw!");
+            // PURE CHAT: No game messages in chat
             return;
         }
         playerScore[winner]++;
@@ -943,7 +1040,7 @@ if (socket) {
         if (statusText) statusText.textContent = winnerName + " wins";
         updateScores();
         addHistory(winnerName + " won");
-        addSystemMessage(`${winnerName} wins the game!`);
+        // PURE CHAT: No game messages in chat
     }
 
     function updateStatus() {
