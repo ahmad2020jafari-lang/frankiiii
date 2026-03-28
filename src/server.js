@@ -335,6 +335,9 @@
 // <!-- I want to test the Voice and Chat -->
 // <!-- I want to test the Voice and Chat -->
 // <!-- I want to test the Voice and Chat -->
+// Replace the configuration section at the top of game.js with this:
+
+// Configuration for WebRTC - Using multiple STUN servers
 require('dotenv').config({ path: './.env' });
 
 const express = require("express");
@@ -342,28 +345,60 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
 const http = require("http");
+const https = require("https");
 const { Server } = require("socket.io");
 const path = require("path");
 const multer = require("multer");
 const nodemailer = require("nodemailer");
+const fs = require("fs");
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+
+// Check for SSL certificates (for local HTTPS)
+let server;
+let useSSL = false;
+
+// Try to load SSL certificates if they exist (for local testing)
+try {
+    if (fs.existsSync('./cert.pem') && fs.existsSync('./key.pem')) {
+        const options = {
+            key: fs.readFileSync('./key.pem'),
+            cert: fs.readFileSync('./cert.pem')
+        };
+        server = https.createServer(options, app);
+        useSSL = true;
+        console.log("🔒 HTTPS server created");
+    } else {
+        server = http.createServer(app);
+        console.log("🌐 HTTP server created");
+    }
+} catch (err) {
+    server = http.createServer(app);
+    console.log("🌐 HTTP server created");
+}
+
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    transports: ['websocket', 'polling']
+});
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CSP Header Fix
+// CSP Header Fix for Render
 app.use((req, res, next) => {
     res.setHeader(
         "Content-Security-Policy",
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:3000; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:3000 https://*.onrender.com; " +
         "style-src 'self' 'unsafe-inline'; " +
-        "connect-src 'self' ws://localhost:3000 http://localhost:3000; " +
+        "connect-src 'self' ws://localhost:3000 http://localhost:3000 https://*.onrender.com wss://*.onrender.com; " +
         "img-src 'self' data: blob:; " +
         "font-src 'self' data:;"
     );
@@ -413,7 +448,6 @@ function generateCode() {
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadDir = path.join(__dirname, "public/uploads");
-        const fs = require('fs');
         if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
         cb(null, uploadDir);
     },
@@ -485,7 +519,6 @@ let waitingPlayer = null;
 let waitingTimeout = null;
 let rooms = {};
 
-// Winner check
 function checkWinner(board) {
     const combos = [
         [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -498,7 +531,6 @@ function checkWinner(board) {
     return board.includes(null) ? null : "draw";
 }
 
-// ---------------- MINIMAX AI ----------------
 function minimax(board, isMaximizing) {
     const winner = checkWinner(board);
     if (winner === "O") return 1;
@@ -530,8 +562,7 @@ function minimax(board, isMaximizing) {
     }
 }
 
-// ---------------- EXPERIENCE SYSTEM ----------------
-const aiExperience = {}; // board state -> move -> score
+const aiExperience = {};
 
 function rememberExperience(board, move, result) {
     const key = board.join('');
@@ -547,7 +578,6 @@ function experienceScore(board, move) {
     return 0;
 }
 
-// ---------------- COMBINED AI DECISION ----------------
 function getBestMoveWithExperience(board) {
     let bestScore = -Infinity;
     let bestMove = null;
@@ -584,7 +614,14 @@ io.on("connection", (socket) => {
             socket.join(room);
             waitingPlayer.join(room);
 
-            rooms[room] = { leftPlayer: waitingPlayer, rightPlayer: socket, board: Array(9).fill(null), turn: "X" };
+            rooms[room] = {
+                leftPlayer: waitingPlayer,
+                rightPlayer: socket,
+                board: Array(9).fill(null),
+                turn: "X",
+                gameActive: true,
+                gameEnded: false
+            };
             io.to(room).emit("startGame", {
                 room,
                 leftPlayer: { id: waitingPlayer.id, username: waitingPlayer.username, profilePic: waitingPlayer.profilePic },
@@ -600,7 +637,14 @@ io.on("connection", (socket) => {
                 if (waitingPlayer === socket) {
                     const room = socket.id;
                     socket.join(room);
-                    rooms[room] = { leftPlayer: socket, rightPlayer: "AI", board: Array(9).fill(null), turn: "X" };
+                    rooms[room] = {
+                        leftPlayer: socket,
+                        rightPlayer: "AI",
+                        board: Array(9).fill(null),
+                        turn: "X",
+                        gameActive: true,
+                        gameEnded: false
+                    };
                     socket.emit("startGame", {
                         room,
                         leftPlayer: { id: socket.id, username: socket.username, profilePic: socket.profilePic },
@@ -614,7 +658,7 @@ io.on("connection", (socket) => {
 
     socket.on("move", ({ room, index, player }) => {
         const roomData = rooms[room];
-        if (!roomData || roomData.board[index] !== null || roomData.turn !== player) return;
+        if (!roomData || roomData.gameEnded || roomData.board[index] !== null || roomData.turn !== player) return;
 
         roomData.board[index] = player;
         roomData.turn = player === "X" ? "O" : "X";
@@ -622,27 +666,27 @@ io.on("connection", (socket) => {
 
         const winner = checkWinner(roomData.board);
         if (winner) {
+            roomData.gameEnded = true;
             io.to(room).emit("gameOver", { winner });
             return;
         }
 
-        // AI MOVE
-        if (roomData.rightPlayer === "AI" && player === "X") {
+        if (roomData.rightPlayer === "AI" && player === "X" && !roomData.gameEnded) {
             const aiIndex = getBestMoveWithExperience(roomData.board);
             if (aiIndex !== null) {
                 roomData.board[aiIndex] = "O";
                 roomData.turn = "X";
 
                 setTimeout(() => {
-                    io.to(room).emit("move", { index: aiIndex, player: "O" });
-                    const w2 = checkWinner(roomData.board);
+                    if (!roomData.gameEnded) {
+                        io.to(room).emit("move", { index: aiIndex, player: "O" });
+                        const w2 = checkWinner(roomData.board);
 
-                    // KI lernt aus dem Spiel
-                    if (w2 === "O") rememberExperience(roomData.board, aiIndex, 1);
-                    else if (w2 === "X") rememberExperience(roomData.board, aiIndex, -1);
-                    else if (w2 === "draw") rememberExperience(roomData.board, aiIndex, 0.5);
-
-                    if (w2) io.to(room).emit("gameOver", { winner: w2 });
+                        if (w2) {
+                            roomData.gameEnded = true;
+                            io.to(room).emit("gameOver", { winner: w2 });
+                        }
+                    }
                 }, 700);
             }
         }
@@ -651,20 +695,19 @@ io.on("connection", (socket) => {
     socket.on("restart", ({ room }) => {
         const roomData = rooms[room];
         if (!roomData) return;
+
+        // Reset game state
         roomData.board = Array(9).fill(null);
         roomData.turn = "X";
+        roomData.gameActive = true;
+        roomData.gameEnded = false;
+
+        // Broadcast restart to both players
         io.to(room).emit("restart");
+
+        console.log(`Game restarted in room: ${room}`);
     });
 
-    socket.on("disconnect", () => {
-        if (waitingPlayer === socket) {
-            waitingPlayer = null;
-            if (waitingTimeout) clearTimeout(waitingTimeout);
-        }
-    });
-    // Add these inside the io.on("connection") callback, after the existing code
-
-    // Chat message handler
     socket.on("chatMessage", (data) => {
         const { room, message, username, profilePic, timestamp } = data;
         if (rooms[room]) {
@@ -677,27 +720,39 @@ io.on("connection", (socket) => {
         }
     });
 
-    // Call signal handler (WebRTC signaling)
     socket.on("callSignal", (data) => {
-        const { room, signal, type } = data;
+        const { room, signal, type, isVideo } = data;
         if (rooms[room]) {
             socket.to(room).emit("callSignal", {
                 signal,
-                type
+                type,
+                isVideo
             });
         }
-        // Add this to handle call rejection
-        socket.on("callRejected", ({ room }) => {
-            if (rooms[room]) {
-                socket.to(room).emit("callRejected");
-            }
-        });
     });
 
-    // Call ended handler
     socket.on("callEnded", ({ room }) => {
         if (rooms[room]) {
             socket.to(room).emit("callEnded");
+        }
+    });
+
+    socket.on("callRejected", ({ room }) => {
+        if (rooms[room]) {
+            socket.to(room).emit("callRejected");
+        }
+    });
+
+    socket.on("disconnect", () => {
+        if (waitingPlayer === socket) {
+            waitingPlayer = null;
+            if (waitingTimeout) clearTimeout(waitingTimeout);
+        }
+
+        for (const [roomId, roomData] of Object.entries(rooms)) {
+            if (roomData.leftPlayer?.id === socket.id || roomData.rightPlayer?.id === socket.id) {
+                delete rooms[roomId];
+            }
         }
     });
 });
