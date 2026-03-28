@@ -4,7 +4,7 @@
     "description": "Professional TicTacToe with login, AI, avatars, scoreboard",
     "main": "server.js",
     "scripts": {
-        "start": "nodemon server.js"
+        "start": "node server.js"
     },
     "dependencies": {
         "bcrypt": "^5.1.1",
