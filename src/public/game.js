@@ -237,6 +237,9 @@
 // <!-- I want to test the Voice and Chat -->
 // <!-- I want to test the Voice and Chat -->
 // <!-- I want to test the Voice and Chat -->
+// ========================
+// LOGIN PAGE HANDLER
+// ========================
 const loginForm = document.getElementById("loginForm");
 
 if (loginForm) {
@@ -263,11 +266,84 @@ if (loginForm) {
     });
 }
 
-// ---------------- GAME ----------------
+// ========================
+// SIGNUP PAGE HANDLER
+// ========================
+const signupForm = document.getElementById("signupForm");
 
+if (signupForm) {
+    // File upload button handler
+    const chooseFileBtn = document.getElementById("chooseFileBtn");
+    const profilePicInput = document.getElementById("profilePic");
+    const fileNameSpan = document.getElementById("fileName");
+
+    if (chooseFileBtn) {
+        chooseFileBtn.addEventListener("click", () => {
+            profilePicInput.click();
+        });
+    }
+
+    if (profilePicInput) {
+        profilePicInput.addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                fileNameSpan.textContent = file.name;
+            } else {
+                fileNameSpan.textContent = "No file selected";
+            }
+        });
+    }
+
+    // Copy code button
+    const copyCodeBtn = document.getElementById("copyCodeBtn");
+    if (copyCodeBtn) {
+        copyCodeBtn.addEventListener("click", () => {
+            const code = document.getElementById("tempCode").textContent;
+            navigator.clipboard.writeText(code);
+            alert("Code copied to clipboard!");
+        });
+    }
+
+    // Signup form submit
+    signupForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        try {
+            const res = await fetch("/signup", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                if (data.code) {
+                    // Show code on screen
+                    document.getElementById("tempCode").textContent = data.code;
+                    document.getElementById("codeDisplay").style.display = "block";
+                    alert("Account created! Please save your login code.");
+                } else {
+                    alert(data.message);
+                    window.location.href = "/login.html";
+                }
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            console.error("Signup error:", error);
+            alert("Server error. Please try again.");
+        }
+    });
+}
+
+// ========================
+// GAME PAGE HANDLER
+// ========================
 const socket = typeof io !== "undefined" ? io() : null;
 
-if (socket) {
+if (socket && document.getElementById("statusText")) {
     // Game state
     let room = null;
     let playerSymbol = "X";
@@ -295,6 +371,7 @@ if (socket) {
     const p2ScoreEl = document.getElementById("player2Score");
     const restartBtn = document.getElementById("restartBtn");
     const historyList = document.getElementById("historyList");
+    const playCharlieBtn = document.getElementById("playCharlieBtn");
 
     // Chat elements
     const chatMessages = document.getElementById("chatMessages");
@@ -349,11 +426,9 @@ if (socket) {
             { urls: "stun:stun1.l.google.com:19302" },
             { urls: "stun:stun2.l.google.com:19302" },
             { urls: "stun:stun3.l.google.com:19302" },
-            { urls: "stun:stun4.l.google.com:19302" },
-            { urls: "stun:stun.stunprotocol.org:3478" }
+            { urls: "stun:stun4.l.google.com:19302" }
         ],
-        iceCandidatePoolSize: 10,
-        iceTransportPolicy: "all"
+        iceCandidatePoolSize: 10
     };
 
     // Initialize peer connection
@@ -380,7 +455,6 @@ if (socket) {
 
         peerConnection.onicecandidate = (event) => {
             if (event.candidate && room && callInProgress) {
-                console.log("Sending ICE candidate");
                 socket.emit("callSignal", {
                     room: room,
                     signal: event.candidate,
@@ -391,7 +465,6 @@ if (socket) {
         };
 
         peerConnection.oniceconnectionstatechange = () => {
-            console.log("ICE connection state:", peerConnection.iceConnectionState);
             switch (peerConnection.iceConnectionState) {
                 case "connected":
                 case "completed":
@@ -427,9 +500,6 @@ if (socket) {
 
     function cleanupPeerConnection() {
         if (peerConnection) {
-            peerConnection.onicecandidate = null;
-            peerConnection.ontrack = null;
-            peerConnection.oniceconnectionstatechange = null;
             peerConnection.close();
             peerConnection = null;
         }
@@ -504,8 +574,6 @@ if (socket) {
             socket.emit("chatMessage", messageData);
             addChatMessage(messageData.message, "own", username, profilePic, messageData.timestamp);
             if (chatInput) chatInput.value = "";
-        } else if (callInProgress) {
-            addChatMessage("Cannot send messages during an active call", "system");
         }
     }
 
@@ -514,7 +582,6 @@ if (socket) {
         if (e.key === "Enter") sendMessage();
     });
 
-    // Add message to chat UI
     function addChatMessage(text, type, senderName = null, senderPic = null, timestamp = null) {
         if (!chatMessages) return;
 
@@ -591,14 +658,13 @@ if (socket) {
             return;
         }
 
-        if (!room || !opponentId) {
-            addChatMessage("Cannot start call: No opponent connected", "system");
+        if (!room || !opponentId || opponentId === "Charlie") {
+            addChatMessage("Cannot start call with Charlie! 🤖", "system");
             return;
         }
 
         callInProgress = true;
         isVideoCall = video;
-        reconnectAttempts = 0;
 
         if (callStatus) {
             callStatus.style.display = "flex";
@@ -675,7 +741,7 @@ if (socket) {
         pendingCandidates = [];
         resetCallUI();
 
-        if (room) {
+        if (room && opponentId !== "Charlie") {
             socket.emit("callEnded", { room });
         }
 
@@ -813,6 +879,18 @@ if (socket) {
     if (toggleMicBtn) toggleMicBtn.addEventListener("click", toggleMicrophone);
     if (toggleCameraBtn) toggleCameraBtn.addEventListener("click", toggleCamera);
 
+    // Play with Charlie
+    if (playCharlieBtn) {
+        playCharlieBtn.addEventListener("click", () => {
+            if (room) {
+                addChatMessage("Already in a game! Please logout and try again.", "system");
+                return;
+            }
+            socket.emit("playWithCharlie");
+            addChatMessage("Starting game with Charlie 🤖...", "system");
+        });
+    }
+
     // Socket event handlers
     socket.on("waiting", () => {
         if (statusText) statusText.textContent = "Waiting for opponent...";
@@ -845,15 +923,17 @@ if (socket) {
 
         isMyTurn = playerSymbol === "X";
 
-        // Reset board visually
         cells.forEach(cell => {
             cell.classList.remove("x", "o", "winner");
-            cell.style.pointerEvents = "auto";
         });
 
         updateScores();
         updateStatus();
         addChatMessage(`Game started! You are ${playerSymbol}`, "system");
+
+        if (opponentId === "Charlie") {
+            addChatMessage("🤖 Charlie is ready to play! You go first.", "system");
+        }
     });
 
     socket.on("move", ({ index, player }) => {
@@ -871,31 +951,18 @@ if (socket) {
         }
     });
 
-    // FIXED: Restart handler
     socket.on("restart", () => {
-        console.log("Restart received");
-
-        // Reset all game state
         board = Array(9).fill("");
         gameActive = true;
         gameEnded = false;
         isMyTurn = playerSymbol === "X";
 
-        // Clear all cells
         cells.forEach(cell => {
             cell.classList.remove("x", "o", "winner");
-            cell.style.pointerEvents = "auto";
         });
 
-        // Update UI
         updateStatus();
         addChatMessage("Game restarted!", "system");
-
-        // Reset status text color
-        if (statusText) {
-            statusText.style.color = "";
-            statusText.textContent = isMyTurn ? "Your turn" : "Opponent's turn";
-        }
     });
 
     socket.on("gameOver", ({ winner }) => {
@@ -1007,7 +1074,6 @@ if (socket) {
         }
     });
 
-    // Click handlers for cells
     cells.forEach((cell, index) => {
         cell.addEventListener("click", () => {
             if (!gameActive || gameEnded || !isMyTurn || board[index] !== "") return;
@@ -1015,29 +1081,10 @@ if (socket) {
         });
     });
 
-    // FIXED: Restart button handler
     if (restartBtn) {
-        // Remove any existing listeners to prevent duplicates
-        const newRestartBtn = restartBtn.cloneNode(true);
-        restartBtn.parentNode.replaceChild(newRestartBtn, restartBtn);
-
-        newRestartBtn.addEventListener("click", () => {
-            console.log("Restart button clicked");
+        restartBtn.addEventListener("click", () => {
             if (room) {
-                // Emit restart event to server
                 socket.emit("restart", { room });
-
-                // Also reset local state immediately for better UX
-                board = Array(9).fill("");
-                gameActive = true;
-                gameEnded = false;
-                isMyTurn = playerSymbol === "X";
-
-                cells.forEach(cell => {
-                    cell.classList.remove("x", "o", "winner");
-                });
-
-                updateStatus();
             }
         });
     }
@@ -1073,7 +1120,6 @@ if (socket) {
             addChatMessage(`${winnerName} wins the game!`, "system");
         }
 
-        // Disable further moves
         isMyTurn = false;
     }
 

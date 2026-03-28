@@ -78,18 +78,15 @@
 <body>
 
     <div class="game-container">
-
         <h2 id="statusText">Waiting for opponent...</h2>
 
         <div class="scoreboard">
-            <!-- Left Player -->
             <div class="player left">
                 <img id="player1Pic" src="user-avatar.png" alt="Player 1">
                 <h3 id="player1Name">Player 1</h3>
                 <h2 id="player1Score">0</h2>
             </div>
 
-            <!-- Game board -->
             <div class="board-container">
                 <div class="board">
                     <div class="cell"></div>
@@ -104,24 +101,24 @@
                 </div>
             </div>
 
-            <!-- Right Player -->
             <div class="player right">
                 <img id="player2Pic" src="ai-avatar.png" alt="Player 2">
                 <h3 id="player2Name">Player 2</h3>
                 <h2 id="player2Score">0</h2>
             </div>
-
         </div>
 
         <div class="bottom-buttons">
             <button id="restartBtn">Next Round</button>
+            <button id="playCharlieBtn" class="charlie-btn">
+                <i class="fas fa-robot"></i> Play with Charlie
+            </button>
             <button onclick="window.location.href='/logout'">Logout</button>
             <div class="history">
                 <h3>Match History</h3>
                 <ul id="historyList"></ul>
             </div>
         </div>
-
     </div>
 
     <!-- Floating Chat Widget -->
@@ -195,7 +192,6 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
-
 </body>
 
 </html>

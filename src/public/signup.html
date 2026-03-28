@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -71,9 +71,57 @@
     </script>
 </body>
 
-</html>
+</html> -->
 
 
 <!-- I want to test the Voice and Chat -->
 <!-- I want to test the Voice and Chat -->
 <!--  I want to test the Voice and Chat -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignUp - TicTacToe</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="login-container">
+        <h2>Create Account</h2>
+
+        <form id="signupForm" enctype="multipart/form-data">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="email" name="email" placeholder="Email" required>
+
+            <label class="file-label">Upload profile picture</label>
+            <div class="file-row">
+                <button type="button" class="file-btn" id="chooseFileBtn">
+                    Choose File
+                </button>
+                <span id="fileName">No file selected</span>
+            </div>
+            <input type="file" id="profilePic" name="profilePic" accept="image/*" style="display: none;">
+
+            <button type="submit" class="btt-sub">Sign Up</button>
+        </form>
+
+        <a href="/login.html" class="login-button-link">Back to Login</a>
+
+        <div id="codeDisplay"
+            style="display: none; margin-top: 20px; padding: 15px; background: rgba(0, 234, 255, 0.1); border-radius: 8px; border: 1px solid #00eaff;">
+            <p style="color: #00eaff; margin: 0 0 10px 0;">📧 Email couldn't be sent</p>
+            <p style="margin: 0;">Use this code to login:</p>
+            <h2 id="tempCode" style="color: #00eaff; font-size: 32px; margin: 10px 0; text-align: center;"></h2>
+            <p style="font-size: 12px; margin: 10px 0 0 0;">Save this code! You'll need it to login.</p>
+            <button id="copyCodeBtn"
+                style="margin-top: 10px; padding: 5px 10px; background: #00c6ff; border: none; border-radius: 5px; color: white; cursor: pointer;">Copy
+                Code</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+
+</html>
