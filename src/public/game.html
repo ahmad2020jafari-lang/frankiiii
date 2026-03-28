@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 
 <head>
@@ -13,8 +13,75 @@
 
         <h2 id="statusText">Waiting for opponent...</h2>
 
-        <div class="scoreboard">
+        <div class="scoreboard"> -->
+<!-- Left Player -->
+<!-- <div class="player left">
+                <img id="player1Pic" src="user-avatar.png" alt="Player 1">
+                <h3 id="player1Name">Player 1</h3>
+                <h2 id="player1Score">0</h2>
+            </div> -->
 
+<!--  Game board -->
+<!-- <div class="board-container">
+                <div class="board">
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                </div>
+            </div> -->
+
+<!-- Right Player -->
+<!-- <div class="player right">
+                <img id="player2Pic" src="ai-avatar.png" alt="Player 2">
+                <h3 id="player2Name">Player 2</h3>
+                <h2 id="player2Score">0</h2>
+            </div>
+
+        </div>
+
+        <div class="bottom-buttons">
+            <button id="restartBtn">Next Round</button>
+            <button onclick="window.location.href='/logout'">Logout</button>
+            <div class="history">
+                <h3>Match History</h3>
+                <ul id="historyList"></ul>
+            </div>
+        </div>
+
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+
+</body>
+
+</html> -->
+<!-- I want to test the Voice and Chat -->
+<!-- I want to test the Voice and Chat -->
+<!-- I want to test the Voice and Chat -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TicTacToe</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <div class="game-container">
+
+        <h2 id="statusText">Waiting for opponent...</h2>
+
+        <div class="scoreboard">
             <!-- Left Player -->
             <div class="player left">
                 <img id="player1Pic" src="user-avatar.png" alt="Player 1">
@@ -55,6 +122,75 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Floating Chat Widget -->
+    <div class="chat-widget" id="chatWidget">
+        <div class="chat-header" id="chatHeader">
+            <div class="chat-header-info">
+                <i class="fas fa-comment-dots"></i>
+                <span>Chat with Opponent</span>
+            </div>
+            <div class="chat-header-actions">
+                <button class="minimize-btn" id="minimizeChatBtn">
+                    <i class="fas fa-minus"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="chat-body" id="chatBody">
+            <div class="chat-messages" id="chatMessages">
+                <div class="system-message">Welcome to the chat! You can message your opponent here.</div>
+            </div>
+
+            <div class="chat-input-area">
+                <div class="call-controls">
+                    <button class="call-btn" id="audioCallBtn">
+                        <i class="fas fa-phone"></i> Audio Call
+                    </button>
+                    <button class="call-btn video-call-btn" id="videoCallBtn">
+                        <i class="fas fa-video"></i> Video Call
+                    </button>
+                    <div class="call-status" id="callStatus" style="display: none;">
+                        <span id="callStatusText">Calling...</span>
+                        <button class="end-call-btn" id="endCallBtn">
+                            <i class="fas fa-phone-slash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="message-input-wrapper">
+                    <input type="text" id="chatInput" placeholder="Type a message..." maxlength="200">
+                    <button id="sendMsgBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Call Container -->
+    <div class="video-container" id="videoContainer" style="display: none;">
+        <div class="video-header">
+            <h4>Video Call</h4>
+            <button class="close-video-btn" id="closeVideoBtn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="video-wrapper">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        <div class="video-controls">
+            <button id="toggleMicBtn" class="video-control-btn">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button id="toggleCameraBtn" class="video-control-btn">
+                <i class="fas fa-video"></i>
+            </button>
+            <button id="endVideoCallBtn" class="video-control-btn end-call">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
