@@ -338,7 +338,7 @@
 // Replace the configuration section at the top of game.js with this:
 
 // Configuration for WebRTC - Using multiple STUN servers
-require('dotenv').config({ path: './.env' });
+require('dotenv').config();
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -354,11 +354,7 @@ const fs = require("fs");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"],
-        credentials: true
-    },
+    cors: { origin: "*", methods: ["GET", "POST"] },
     transports: ['websocket', 'polling']
 });
 
@@ -403,82 +399,28 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model("User", userSchema);
 
-// Email Setup with multiple fallback options
-let transporter = null;
-let emailConfigured = false;
+// ========================
+// GMAIL EMAIL SETUP - DIRECT
+// ========================
+console.log("📧 Setting up Gmail...");
+console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Found: " + process.env.EMAIL_USER : "❌ Missing");
+console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "✅ Found (length: " + process.env.EMAIL_PASS.length + ")" : "❌ Missing");
 
-// Try to configure email with multiple methods
-async function setupEmail() {
-    const emailUser = process.env.EMAIL_USER;
-    const emailPass = process.env.EMAIL_PASS;
-
-    if (!emailUser || !emailPass) {
-        console.log("⚠️ Email credentials not found in environment variables");
-        console.log("📧 Email will be disabled. Users will see their code on screen.");
-        return false;
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
     }
+});
 
-    // Method 1: Try Gmail with port 465 (SSL)
-    try {
-        transporter = nodemailer.createTransport({
-            host: "smtp.gmail.com",
-            port: 465,
-            secure: true,
-            auth: {
-                user: emailUser,
-                pass: emailPass
-            },
-            tls: {
-                rejectUnauthorized: false
-            },
-            connectionTimeout: 10000,
-            greetingTimeout: 10000,
-            socketTimeout: 10000
-        });
-
-        await transporter.verify();
-        console.log("✅ Email configured with Gmail SSL (port 465)");
-        return true;
-    } catch (error) {
-        console.log("⚠️ Gmail SSL failed, trying TLS...");
-    }
-
-    // Method 2: Try Gmail with port 587 (TLS)
-    try {
-        transporter = nodemailer.createTransport({
-            host: "smtp.gmail.com",
-            port: 587,
-            secure: false,
-            auth: {
-                user: emailUser,
-                pass: emailPass
-            },
-            tls: {
-                rejectUnauthorized: false
-            },
-            connectionTimeout: 10000,
-            greetingTimeout: 10000,
-            socketTimeout: 10000
-        });
-
-        await transporter.verify();
-        console.log("✅ Email configured with Gmail TLS (port 587)");
-        return true;
-    } catch (error) {
-        console.log("⚠️ Gmail TLS failed, trying alternative SMTP...");
-    }
-
-    // Method 3: Try alternative SMTP (if using other email services)
-    console.log("❌ All email configurations failed");
-    transporter = null;
-    return false;
-}
-
-// Initialize email on startup
-setupEmail().then(success => {
-    emailConfigured = success;
-    if (!success) {
-        console.log("📧 Email is disabled. Users will see codes on screen.");
+// Verify connection
+transporter.verify((error, success) => {
+    if (error) {
+        console.log("❌ Gmail connection FAILED:", error.message);
+        console.log("⚠️ Make sure you're using an App Password, not your regular Gmail password");
+    } else {
+        console.log("✅ Gmail is READY and WORKING!");
     }
 });
 
@@ -497,7 +439,53 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ---------------- ROUTES ----------------
+// Avatar endpoints
+app.get('/user-avatar.png', (req, res) => {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#00c6ff"/><circle cx="50" cy="35" r="15" fill="white"/><circle cx="38" cy="32" r="2" fill="black"/><circle cx="62" cy="32" r="2" fill="black"/><path d="M35 55 Q50 70 65 55" stroke="white" stroke-width="3" fill="none"/></svg>`);
+});
+
+app.get('/charlie-avatar.png', (req, res) => {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ee5a24"/><rect x="35" y="30" width="30" height="25" rx="5" fill="white"/><circle cx="40" cy="40" r="3" fill="black"/><circle cx="60" cy="40" r="3" fill="black"/><path d="M30 70 L50 80 L70 70" stroke="white" stroke-width="3" fill="none"/></svg>`);
+});
+
+// TEST EMAIL ROUTE
+app.get("/send-test", async (req, res) => {
+    try {
+        const result = await transporter.sendMail({
+            from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
+            to: "ahmad2020jafari@gmail.com",
+            subject: "✅ TEST: TicTacToe Email Working",
+            html: `
+                <div style="font-family: Arial; padding: 30px; background: #0f2027; color: white; text-align: center;">
+                    <h1 style="color: #00eaff;">✅ Email is Working!</h1>
+                    <p>Your TicTacToe game can now send emails via Gmail.</p>
+                    <p>Time: ${new Date().toLocaleString()}</p>
+                    <p>You can now create accounts and receive login codes!</p>
+                </div>
+            `,
+            text: "Email is working! You can now create accounts."
+        });
+        console.log("✅ Test email sent:", result.messageId);
+        res.send(`
+            <h1 style="color: green;">✅ Test Email Sent Successfully!</h1>
+            <p>Message ID: ${result.messageId}</p>
+            <p>Check your email inbox (and spam folder).</p>
+            <a href="/signup.html">Go to Signup</a>
+        `);
+    } catch (error) {
+        console.error("❌ Test failed:", error.message);
+        res.send(`
+            <h1 style="color: red;">❌ Test Failed</h1>
+            <p>Error: ${error.message}</p>
+            <p>Make sure you're using a Gmail App Password, not your regular password.</p>
+            <p>Get one at: https://myaccount.google.com/apppasswords</p>
+        `);
+    }
+});
+
+// Routes
 app.get("/", (req, res) => res.redirect("/login.html"));
 app.get("/game.html", (req, res) => {
     if (!req.session.username) return res.redirect("/login.html");
@@ -505,47 +493,20 @@ app.get("/game.html", (req, res) => {
 });
 app.get("/logout", (req, res) => req.session.destroy(() => res.redirect("/login.html")));
 
-// Test email endpoint
-app.get("/test-email", async (req, res) => {
-    if (!transporter || !emailConfigured) {
-        return res.json({
-            success: false,
-            message: "Email not configured. Check Render environment variables.",
-            envVars: {
-                EMAIL_USER: process.env.EMAIL_USER ? "✅ Set" : "❌ Missing",
-                EMAIL_PASS: process.env.EMAIL_PASS ? "✅ Set" : "❌ Missing"
-            }
-        });
-    }
-
-    try {
-        await transporter.sendMail({
-            from: `"TicTacToe" <${process.env.EMAIL_USER}>`,
-            to: process.env.EMAIL_USER,
-            subject: "Test Email from Render",
-            text: "If you get this, email works!"
-        });
-        res.json({ success: true, message: "Test email sent!" });
-    } catch (error) {
-        res.json({ success: false, error: error.message });
-    }
-});
-
-// Signup - Updated with better email handling
+// SIGNUP
 app.post("/signup", upload.single("profilePic"), async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const { username, email } = req.body;
 
-        // Check if user exists
+        console.log("📝 Signup attempt:", username, email);
+
         const existing = await User.findOne({ $or: [{ username }, { email }] });
         if (existing) {
             return res.json({ success: false, message: "Username or email already exists" });
         }
 
-        // Generate code or use provided password
-        const generatedCode = generateCode();
-        const finalPassword = password || generatedCode;
-        const hashed = await bcrypt.hash(finalPassword, 10);
+        const code = generateCode();
+        const hashed = await bcrypt.hash(code, 10);
 
         const user = new User({
             username,
@@ -556,64 +517,51 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
 
         await user.save();
         console.log("✅ User saved:", username);
+        console.log("🔑 Code:", code);
 
-        // Try to send email
-        let emailSent = false;
-        let emailError = null;
+        // SEND EMAIL VIA GMAIL
+        console.log("📧 Sending email to:", email);
 
-        if (transporter && emailConfigured && !password) {
-            try {
-                const mailOptions = {
-                    from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
-                    to: email,
-                    subject: "Your TicTacToe Login Code",
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: linear-gradient(135deg, #0f2027, #203a43); color: white; border-radius: 10px;">
-                            <h2 style="color: #00eaff;">Welcome to TicTacToe!</h2>
-                            <p>Hello <strong>${username}</strong>,</p>
-                            <p>Your account has been successfully created.</p>
-                            <div style="background: rgba(0, 234, 255, 0.2); padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
-                                <p style="margin: 0; font-size: 14px;">Your login code is:</p>
-                                <h1 style="margin: 10px 0; color: #00eaff; font-size: 32px;">${generatedCode}</h1>
-                            </div>
-                            <p>Use this 6-digit code along with your username to login.</p>
-                            <p style="font-size: 12px; color: #aaa; margin-top: 20px;">This code is valid for 30 days.</p>
+        const mailResult = await transporter.sendMail({
+            from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "🔐 Your TicTacToe Login Code",
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                </head>
+                <body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background: #0f2027;">
+                    <div style="max-width: 500px; margin: 50px auto; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 20px; padding: 40px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+                        <div style="font-size: 64px; margin-bottom: 20px;">🎮</div>
+                        <h1 style="color: #00eaff; margin-bottom: 20px;">TicTacToe</h1>
+                        <p style="color: white; font-size: 18px;">Hello <strong style="color: #00eaff;">${username}</strong>,</p>
+                        <p style="color: white;">Your account has been successfully created!</p>
+                        <div style="background: rgba(0,234,255,0.15); padding: 25px; border-radius: 15px; margin: 30px 0;">
+                            <p style="color: #aaa; margin: 0 0 10px 0;">Your login code is:</p>
+                            <div style="font-size: 56px; font-weight: bold; color: #00eaff; letter-spacing: 8px; font-family: monospace;">${code}</div>
                         </div>
-                    `,
-                    text: `Welcome to TicTacToe!\n\nYour login code is: ${generatedCode}\n\nUse this 6-digit code with your username to login.`
-                };
+                        <p style="color: white;">Use this code to login to your account.</p>
+                        <p style="color: #888; font-size: 12px; margin-top: 30px;">This is an automated message. Please do not reply.</p>
+                    </div>
+                </body>
+                </html>
+            `,
+            text: `Welcome to TicTacToe!\n\nHello ${username},\n\nYour account has been created.\n\nYour login code is: ${code}\n\nUse this code to login to your account.`
+        });
 
-                await transporter.sendMail(mailOptions);
-                emailSent = true;
-                console.log("✅ Email sent to:", email);
-            } catch (error) {
-                emailError = error.message;
-                console.error("❌ Failed to send email:", error.message);
-            }
-        }
+        console.log("✅ EMAIL SENT SUCCESSFULLY!");
+        console.log("📧 Message ID:", mailResult.messageId);
 
-        // Send response
-        if (emailSent) {
-            res.json({
-                success: true,
-                message: "Account created! Check your email for the 6-digit password. (Check spam folder if not in inbox)"
-            });
-        } else if (password) {
-            res.json({
-                success: true,
-                message: "Account created! You can now login with your password."
-            });
-        } else {
-            // Always show the code on screen if email fails
-            res.json({
-                success: true,
-                message: `Account created! Your login code is: ${generatedCode}\n\nPlease save this code. You'll need it to login.`,
-                code: generatedCode,
-                showCode: true
-            });
-        }
+        res.json({
+            success: true,
+            message: "Account created! Check your email for the login code.",
+            emailSent: true
+        });
+
     } catch (error) {
-        console.error("Signup error:", error);
+        console.error("❌ Signup error:", error);
         res.json({ success: false, message: "Server error: " + error.message });
     }
 });
@@ -637,17 +585,15 @@ app.post("/login", async (req, res) => {
     }
 });
 
-// ---------------- GAME LOGIC ----------------
+// ========================
+// GAME LOGIC
+// ========================
 let waitingPlayer = null;
 let waitingTimeout = null;
 let rooms = {};
 
 function checkWinner(board) {
-    const combos = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8],
-        [0, 3, 6], [1, 4, 7], [2, 5, 8],
-        [0, 4, 8], [2, 4, 6]
-    ];
+    const combos = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
     for (const [a, b, c] of combos) {
         if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
     }
@@ -685,23 +631,7 @@ function minimax(board, isMaximizing) {
     }
 }
 
-const charlieExperience = {};
-
-function rememberExperience(board, move, result) {
-    const key = board.join('');
-    if (!charlieExperience[key]) charlieExperience[key] = {};
-    charlieExperience[key][move] = (charlieExperience[key][move] || 0) + result;
-}
-
-function experienceScore(board, move) {
-    const key = board.join('');
-    if (charlieExperience[key] && charlieExperience[key][move] !== undefined) {
-        return charlieExperience[key][move];
-    }
-    return 0;
-}
-
-function getBestMoveWithExperience(board) {
+function getBestMove(board) {
     let bestScore = -Infinity;
     let bestMove = null;
     for (let i = 0; i < 9; i++) {
@@ -709,12 +639,8 @@ function getBestMoveWithExperience(board) {
             board[i] = "O";
             let score = minimax(board, false);
             board[i] = null;
-
-            const expScore = experienceScore(board, i);
-            const combinedScore = score + expScore;
-
-            if (combinedScore > bestScore) {
-                bestScore = combinedScore;
+            if (score > bestScore) {
+                bestScore = score;
                 bestMove = i;
             }
         }
@@ -722,56 +648,35 @@ function getBestMoveWithExperience(board) {
     return bestMove;
 }
 
-// ---------------- SOCKET.IO ----------------
 io.on("connection", (socket) => {
-    console.log("🔌 User connected:", socket.id);
-
     socket.on("playerInfo", (data) => {
         socket.username = data.username;
         socket.profilePic = data.profilePic;
 
         if (waitingPlayer && waitingPlayer.id !== socket.id) {
             if (waitingTimeout) clearTimeout(waitingTimeout);
-
             const room = waitingPlayer.id + "#" + socket.id;
             socket.join(room);
             waitingPlayer.join(room);
-
-            rooms[room] = {
-                leftPlayer: waitingPlayer,
-                rightPlayer: socket,
-                board: Array(9).fill(null),
-                turn: "X",
-                gameActive: true,
-                gameEnded: false
-            };
+            rooms[room] = { leftPlayer: waitingPlayer, rightPlayer: socket, board: Array(9).fill(null), turn: "X", gameEnded: false };
             io.to(room).emit("startGame", {
                 room,
                 leftPlayer: { id: waitingPlayer.id, username: waitingPlayer.username, profilePic: waitingPlayer.profilePic },
                 rightPlayer: { id: socket.id, username: socket.username, profilePic: socket.profilePic }
             });
-
             waitingPlayer = null;
         } else {
             waitingPlayer = socket;
             socket.emit("waiting");
-
             waitingTimeout = setTimeout(() => {
                 if (waitingPlayer === socket) {
                     const room = socket.id;
                     socket.join(room);
-                    rooms[room] = {
-                        leftPlayer: socket,
-                        rightPlayer: "Charlie",
-                        board: Array(9).fill(null),
-                        turn: "X",
-                        gameActive: true,
-                        gameEnded: false
-                    };
+                    rooms[room] = { leftPlayer: socket, rightPlayer: "Charlie", board: Array(9).fill(null), turn: "X", gameEnded: false };
                     socket.emit("startGame", {
                         room,
                         leftPlayer: { id: socket.id, username: socket.username, profilePic: socket.profilePic },
-                        rightPlayer: { id: "Charlie", username: "Charlie 🤖", profilePic: "/uploads/charlie-avatar.png" }
+                        rightPlayer: { id: "Charlie", username: "Charlie 🤖", profilePic: "/charlie-avatar.png" }
                     });
                     waitingPlayer = null;
                 }
@@ -780,25 +685,14 @@ io.on("connection", (socket) => {
     });
 
     socket.on("playWithCharlie", () => {
-        const room = socket.id + "_charlie_" + Date.now();
+        const room = socket.id + "_charlie";
         socket.join(room);
-
-        rooms[room] = {
-            leftPlayer: socket,
-            rightPlayer: "Charlie",
-            board: Array(9).fill(null),
-            turn: "X",
-            gameActive: true,
-            gameEnded: false
-        };
-
+        rooms[room] = { leftPlayer: socket, rightPlayer: "Charlie", board: Array(9).fill(null), turn: "X", gameEnded: false };
         socket.emit("startGame", {
             room,
             leftPlayer: { id: socket.id, username: socket.username, profilePic: socket.profilePic },
-            rightPlayer: { id: "Charlie", username: "Charlie 🤖", profilePic: "/uploads/charlie-avatar.png" }
+            rightPlayer: { id: "Charlie", username: "Charlie 🤖", profilePic: "/charlie-avatar.png" }
         });
-
-        console.log(`🎮 ${socket.username} started game with Charlie`);
     });
 
     socket.on("move", ({ room, index, player }) => {
@@ -817,20 +711,14 @@ io.on("connection", (socket) => {
         }
 
         if (roomData.rightPlayer === "Charlie" && player === "X" && !roomData.gameEnded) {
-            const charlieMove = getBestMoveWithExperience(roomData.board);
+            const charlieMove = getBestMove(roomData.board);
             if (charlieMove !== null) {
-                roomData.board[charlieMove] = "O";
-                roomData.turn = "X";
-
                 setTimeout(() => {
                     if (!roomData.gameEnded) {
+                        roomData.board[charlieMove] = "O";
+                        roomData.turn = "X";
                         io.to(room).emit("move", { index: charlieMove, player: "O" });
                         const w2 = checkWinner(roomData.board);
-
-                        if (w2 === "O") rememberExperience(roomData.board, charlieMove, 1);
-                        else if (w2 === "X") rememberExperience(roomData.board, charlieMove, -1);
-                        else if (w2 === "draw") rememberExperience(roomData.board, charlieMove, 0.5);
-
                         if (w2) {
                             roomData.gameEnded = true;
                             io.to(room).emit("gameOver", { winner: w2 });
@@ -843,35 +731,25 @@ io.on("connection", (socket) => {
 
     socket.on("restart", ({ room }) => {
         const roomData = rooms[room];
-        if (!roomData) return;
-
-        roomData.board = Array(9).fill(null);
-        roomData.turn = "X";
-        roomData.gameActive = true;
-        roomData.gameEnded = false;
-        io.to(room).emit("restart");
+        if (roomData) {
+            roomData.board = Array(9).fill(null);
+            roomData.turn = "X";
+            roomData.gameEnded = false;
+            io.to(room).emit("restart");
+        }
     });
 
     socket.on("chatMessage", (data) => {
         const { room, message, username, profilePic, timestamp } = data;
         if (rooms[room]) {
-            socket.to(room).emit("chatMessage", {
-                username,
-                profilePic,
-                message,
-                timestamp
-            });
+            socket.to(room).emit("chatMessage", { username, profilePic, message, timestamp });
         }
     });
 
     socket.on("callSignal", (data) => {
         const { room, signal, type, isVideo } = data;
         if (rooms[room] && rooms[room].rightPlayer !== "Charlie") {
-            socket.to(room).emit("callSignal", {
-                signal,
-                type,
-                isVideo
-            });
+            socket.to(room).emit("callSignal", { signal, type, isVideo });
         }
     });
 
@@ -881,18 +759,11 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("callRejected", ({ room }) => {
-        if (rooms[room] && rooms[room].rightPlayer !== "Charlie") {
-            socket.to(room).emit("callRejected");
-        }
-    });
-
     socket.on("disconnect", () => {
         if (waitingPlayer === socket) {
             waitingPlayer = null;
             if (waitingTimeout) clearTimeout(waitingTimeout);
         }
-
         for (const [roomId, roomData] of Object.entries(rooms)) {
             if (roomData.leftPlayer?.id === socket.id || roomData.rightPlayer?.id === socket.id) {
                 delete rooms[roomId];
