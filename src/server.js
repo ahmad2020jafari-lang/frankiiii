@@ -408,11 +408,11 @@ let emailConfigured = false;
 console.log("📧 Setting up email service...");
 console.log("Checking environment variables:");
 console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Found: " + process.env.EMAIL_USER : "❌ Missing");
-console.log("EMAIL_PASSWORD:", process.env.EMAIL_PASSWORD ? "✅ Found" : "❌ Missing");
+console.log("EMAIL_PASSWORD:", process.env.EMAIL_PASS ? "✅ Found" : "❌ Missing");
 console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "✅ Found" : "❌ Missing");
 
 // Try to get password from either variable name
-const emailPassword = process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
+const emailPassword = process.env.EMAIL_PASS || process.env.EMAIL_PASS;
 
 if (process.env.EMAIL_USER && emailPassword) {
     transporter = nodemailer.createTransport({
@@ -496,7 +496,7 @@ app.get("/test-email", async (req, res) => {
             success: false,
             message: "Email not configured. Add EMAIL_USER and EMAIL_PASSWORD to environment variables.",
             emailUser: process.env.EMAIL_USER ? "✅ Set: " + process.env.EMAIL_USER : "❌ Missing",
-            emailPassword: (process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS) ? "✅ Set" : "❌ Missing",
+            emailPassword: (process.env.EMAIL_PASS || process.env.EMAIL_PASS) ? "✅ Set" : "❌ Missing",
             instructions: "To set up Gmail: 1. Enable 2FA on Google account 2. Generate App Password 3. Add to Render"
         });
     }
