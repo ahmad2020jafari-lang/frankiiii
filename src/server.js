@@ -348,8 +348,10 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 const multer = require("multer");
-const nodemailer = require("nodemailer");
 const fs = require("fs");
+
+// Resend email
+const { Resend } = require('resend');
 
 const app = express();
 const server = http.createServer(app);
@@ -400,65 +402,21 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // ========================
-// EMAIL SETUP - WORKS ON BOTH LOCAL AND RENDER
+// EMAIL SETUP - RESEND (WORKS ON RENDER)
 // ========================
-let transporter = null;
+let resend = null;
 let emailConfigured = false;
 
-// Check if running on Render
-const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1';
+console.log("📧 Setting up Resend email...");
 
-console.log("📧 Setting up email...");
-console.log("Environment:", isRender ? "Render (using Brevo)" : "Local (using Gmail)");
-
-async function setupEmail() {
-    // For Render - use Brevo (works with Render's IPs)
-    if (isRender && process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS) {
-        try {
-            transporter = nodemailer.createTransport({
-                host: "smtp-relay.brevo.com",
-                port: 587,
-                secure: false,
-                auth: {
-                    user: process.env.BREVO_SMTP_USER,
-                    pass: process.env.BREVO_SMTP_PASS
-                }
-            });
-
-            await transporter.verify();
-            emailConfigured = true;
-            console.log("✅ Brevo email configured for Render!");
-            return;
-        } catch (error) {
-            console.log("❌ Brevo failed:", error.message);
-        }
-    }
-
-    // For Local - use Gmail (works locally)
-    if (!isRender && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        try {
-            transporter = nodemailer.createTransport({
-                service: "gmail",
-                auth: {
-                    user: process.env.EMAIL_USER,
-                    pass: process.env.EMAIL_PASS
-                }
-            });
-
-            await transporter.verify();
-            emailConfigured = true;
-            console.log("✅ Gmail configured for local development!");
-            return;
-        } catch (error) {
-            console.log("❌ Gmail failed:", error.message);
-        }
-    }
-
-    console.log("⚠️ No email configured. Users will see codes on screen.");
-    emailConfigured = false;
+if (process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+    emailConfigured = true;
+    console.log("✅ Resend email configured!");
+    console.log("API Key:", process.env.RESEND_API_KEY.substring(0, 10) + "...");
+} else {
+    console.log("⚠️ RESEND_API_KEY not set. Users will see codes on screen.");
 }
-
-setupEmail();
 
 function generateCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -488,29 +446,34 @@ app.get('/charlie-avatar.png', (req, res) => {
 
 // TEST EMAIL ROUTE
 app.get("/test-email", async (req, res) => {
-    if (!transporter || !emailConfigured) {
+    if (!resend || !emailConfigured) {
         return res.json({
             success: false,
-            message: "Email not configured",
-            isRender: isRender,
-            config: {
-                brevo: process.env.BREVO_SMTP_USER ? "✅ Set" : "❌ Missing",
-                gmail: process.env.EMAIL_USER ? "✅ Set" : "❌ Missing"
-            }
+            message: "Email not configured. Add RESEND_API_KEY to environment variables.",
+            apiKey: process.env.RESEND_API_KEY ? "✅ Set" : "❌ Missing"
         });
     }
 
     try {
-        const sender = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER;
-        const result = await transporter.sendMail({
-            from: `"TicTacToe Test" <${sender}>`,
-            to: "ahmad2020jafari@gmail.com",
-            subject: "Test Email from TicTacToe",
-            html: "<h1>Test Email</h1><p>If you get this, email is working!</p>",
-            text: "If you get this, email is working!"
+        const { data, error } = await resend.emails.send({
+            from: "TicTacToe <onboarding@resend.dev>",
+            to: ["ahmad2020jafari@gmail.com"],
+            subject: "✅ Test Email from TicTacToe",
+            html: `
+                <div style="font-family: Arial; text-align: center; padding: 40px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px;">
+                    <h1 style="color: #00eaff;">🎮 TicTacToe</h1>
+                    <p style="color: white;">Email is working! You can now create accounts and receive login codes.</p>
+                    <p style="color: #00eaff;">Time: ${new Date().toLocaleString()}</p>
+                </div>
+            `
         });
-        res.json({ success: true, message: "Test email sent!", messageId: result.messageId });
+
+        if (error) throw error;
+
+        console.log("✅ Test email sent:", data?.id);
+        res.json({ success: true, message: "Test email sent! Check your inbox.", messageId: data?.id });
     } catch (error) {
+        console.error("❌ Test failed:", error.message);
         res.json({ success: false, error: error.message });
     }
 });
@@ -549,16 +512,14 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
         console.log("✅ User saved:", username);
         console.log("🔑 Code:", code);
 
-        // Send email
+        // Send email via Resend
         let emailSent = false;
 
-        if (transporter && emailConfigured) {
+        if (resend && emailConfigured) {
             try {
-                const sender = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER;
-
-                await transporter.sendMail({
-                    from: `"TicTacToe Game" <${sender}>`,
-                    to: email,
+                const { data, error } = await resend.emails.send({
+                    from: "TicTacToe <onboarding@resend.dev>",
+                    to: [email],
                     subject: "🔐 Your TicTacToe Login Code",
                     html: `
                         <div style="font-family: Arial; max-width: 500px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px; text-align: center;">
@@ -569,13 +530,18 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
                                 <p style="color: white;">Your login code is:</p>
                                 <h1 style="color: #00eaff; font-size: 48px; letter-spacing: 5px;">${code}</h1>
                             </div>
-                            <p style="color: white;">Use this code to login.</p>
+                            <p style="color: white;">Use this code to login to your account.</p>
+                            <p style="color: #888; font-size: 12px; margin-top: 20px;">This is an automated message.</p>
                         </div>
                     `,
                     text: `Welcome to TicTacToe!\n\nHello ${username},\n\nYour login code is: ${code}\n\nUse this code to login.`
                 });
+
+                if (error) throw error;
+
                 emailSent = true;
                 console.log("✅ Email sent to:", email);
+                console.log("📧 Message ID:", data?.id);
             } catch (error) {
                 console.error("❌ Email failed:", error.message);
             }
@@ -584,7 +550,7 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
         if (emailSent) {
             res.json({
                 success: true,
-                message: "Account created! Check your email for the login code. (Check spam folder)"
+                message: "Account created! Check your email for the login code. (Check spam folder if not in inbox)"
             });
         } else {
             res.json({
