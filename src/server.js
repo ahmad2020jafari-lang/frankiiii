@@ -382,7 +382,7 @@ app.use(session({
     secret: "tictactoe_secret",
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false }
+    cookie: { secure: false } // Set to true if using HTTPS
 }));
 
 // MongoDB Connection
@@ -400,35 +400,55 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // ========================
-// EMAIL SETUP - DIRECT GMAIL (WORKS FOR ALL EMAILS)
+// EMAIL SETUP - FIXED VERSION
 // ========================
 let transporter = null;
 let emailConfigured = false;
 
-console.log("📧 Setting up Gmail direct...");
-console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Found" : "❌ Missing");
+console.log("📧 Setting up email service...");
+console.log("Checking environment variables:");
+console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Found: " + process.env.EMAIL_USER : "❌ Missing");
+console.log("EMAIL_PASSWORD:", process.env.EMAIL_PASSWORD ? "✅ Found" : "❌ Missing");
 console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "✅ Found" : "❌ Missing");
 
-if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+// Try to get password from either variable name
+const emailPassword = process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
+
+if (process.env.EMAIL_USER && emailPassword) {
     transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
+            pass: emailPassword
+        },
+        // Add these options for better reliability
+        tls: {
+            rejectUnauthorized: false
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000
     });
 
+    // Verify connection
     transporter.verify((error, success) => {
         if (error) {
             console.log("❌ Gmail connection failed:", error.message);
+            console.log("   Please check:");
+            console.log("   1. Email and password are correct");
+            console.log("   2. If using Gmail, you need an App Password (not regular password)");
+            console.log("   3. 2-Factor Authentication must be enabled for App Password");
             emailConfigured = false;
         } else {
-            console.log("✅ Gmail configured! Will send from:", process.env.EMAIL_USER);
+            console.log("✅ Gmail configured successfully! Will send from:", process.env.EMAIL_USER);
             emailConfigured = true;
         }
     });
 } else {
-    console.log("⚠️ Gmail credentials missing. Add EMAIL_USER and EMAIL_PASS in Render dashboard.");
+    console.log("⚠️ Email credentials missing. Please add to Render dashboard:");
+    console.log("   - EMAIL_USER: your-email@gmail.com");
+    console.log("   - EMAIL_PASSWORD: your-app-specific-password (16 chars)");
+    console.log("   Or EMAIL_PASS as alternative variable name");
 }
 
 function generateCode() {
@@ -457,14 +477,15 @@ app.get('/charlie-avatar.png', (req, res) => {
     res.send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ee5a24"/><rect x="35" y="30" width="30" height="25" rx="5" fill="white"/><circle cx="40" cy="40" r="3" fill="black"/><circle cx="60" cy="40" r="3" fill="black"/><path d="M30 70 L50 80 L70 70" stroke="white" stroke-width="3" fill="none"/></svg>`);
 });
 
-// Health check
+// Health check with more details
 app.get("/ping", (req, res) => {
     res.json({
         status: "ok",
         timestamp: new Date().toISOString(),
         emailConfigured: emailConfigured,
         fromEmail: process.env.EMAIL_USER,
-        environment: process.env.RENDER ? "Render" : "Local"
+        environment: process.env.RENDER ? "Render" : "Local",
+        nodeEnv: process.env.NODE_ENV
     });
 });
 
@@ -473,31 +494,38 @@ app.get("/test-email", async (req, res) => {
     if (!transporter || !emailConfigured) {
         return res.json({
             success: false,
-            message: "Email not configured. Add EMAIL_USER and EMAIL_PASS to environment variables.",
-            emailUser: process.env.EMAIL_USER ? "✅ Set" : "❌ Missing",
-            emailPass: process.env.EMAIL_PASS ? "✅ Set" : "❌ Missing"
+            message: "Email not configured. Add EMAIL_USER and EMAIL_PASSWORD to environment variables.",
+            emailUser: process.env.EMAIL_USER ? "✅ Set: " + process.env.EMAIL_USER : "❌ Missing",
+            emailPassword: (process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS) ? "✅ Set" : "❌ Missing",
+            instructions: "To set up Gmail: 1. Enable 2FA on Google account 2. Generate App Password 3. Add to Render"
         });
     }
 
     try {
+        const testEmail = "tictactoeplanwerk@gmail.com";
         await transporter.sendMail({
             from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
-            to: "tictactoeplanwerk@gmail.com",
+            to: testEmail,
             subject: "✅ Test Email from TicTacToe",
             html: `
                 <div style="font-family: Arial; text-align: center; padding: 40px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px;">
                     <h1 style="color: #00eaff;">🎮 TicTacToe</h1>
                     <p style="color: white;">Email is working! You can now create accounts and receive login codes.</p>
-                    <p style="color: #00eaff;">Time: ${new Date().toLocaleString()}</p>
+                    <p style="color: white;">Time: ${new Date().toLocaleString()}</p>
+                    <p style="color: #00eaff;">Server: ${process.env.RENDER ? "Render.com" : "Local"}</p>
                 </div>
             `
         });
 
-        console.log("✅ Test email sent!");
-        res.json({ success: true, message: "Test email sent! Check your inbox/spam." });
+        console.log("✅ Test email sent to:", testEmail);
+        res.json({ success: true, message: "Test email sent! Check inbox/spam folder." });
     } catch (error) {
-        console.error("❌ Test failed:", error.message);
-        res.json({ success: false, error: error.message });
+        console.error("❌ Test email failed:", error.message);
+        res.json({
+            success: false,
+            error: error.message,
+            suggestion: "Check if the email credentials are correct and App Password is used for Gmail"
+        });
     }
 });
 
@@ -509,7 +537,7 @@ app.get("/game.html", (req, res) => {
 });
 app.get("/logout", (req, res) => req.session.destroy(() => res.redirect("/login.html")));
 
-// SIGNUP
+// SIGNUP - FIXED EMAIL SENDING
 app.post("/signup", upload.single("profilePic"), async (req, res) => {
     try {
         const { username, email } = req.body;
@@ -533,55 +561,69 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
 
         await user.save();
         console.log("✅ User saved:", username);
-        console.log("🔑 Code:", code);
+        console.log("🔑 Generated code for", email, ":", code);
 
-        // Send email via Gmail
+        // Send email with better error handling
         let emailSent = false;
+        let emailError = null;
 
         if (transporter && emailConfigured) {
             try {
-                await transporter.sendMail({
+                const mailOptions = {
                     from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
                     to: email,
                     subject: "🔐 Your TicTacToe Login Code",
                     html: `
-                        <div style="font-family: Arial; max-width: 500px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px; text-align: center;">
+                        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px; text-align: center;">
                             <h2 style="color: #00eaff;">🎮 TicTacToe</h2>
                             <p style="color: white;">Hello <strong>${username}</strong>,</p>
-                            <p style="color: white;">Your account has been created!</p>
+                            <p style="color: white;">Your account has been created successfully!</p>
                             <div style="background: rgba(0,234,255,0.2); padding: 20px; border-radius: 10px; margin: 20px 0;">
-                                <p style="color: white;">Your login code is:</p>
-                                <h1 style="color: #00eaff; font-size: 48px; letter-spacing: 5px;">${code}</h1>
+                                <p style="color: white; margin-bottom: 10px;">Your login code is:</p>
+                                <h1 style="color: #00eaff; font-size: 48px; letter-spacing: 5px; margin: 10px 0;">${code}</h1>
                             </div>
                             <p style="color: white;">Use this code to login to your account.</p>
-                            <p style="color: #888; font-size: 12px; margin-top: 20px;">This is an automated message.</p>
+                            <p style="color: #ffd966; font-size: 14px;">💡 Tip: You can change your password after login!</p>
+                            <p style="color: #888; font-size: 12px; margin-top: 20px;">This is an automated message. Please do not reply.</p>
                         </div>
                     `,
-                    text: `Welcome to TicTacToe!\n\nHello ${username},\n\nYour login code is: ${code}\n\nUse this code to login.`
-                });
+                    text: `Welcome to TicTacToe!\n\nHello ${username},\n\nYour login code is: ${code}\n\nUse this code to login to your account.\n\nThis is an automated message.`
+                };
+
+                const info = await transporter.sendMail(mailOptions);
                 emailSent = true;
-                console.log("✅ Email sent to:", email);
+                console.log("✅ Email sent successfully to:", email, "Message ID:", info.messageId);
             } catch (error) {
-                console.error("❌ Email failed:", error.message);
+                emailError = error.message;
+                console.error("❌ Email sending failed:", error.message);
+                console.error("   Full error:", error);
             }
+        } else {
+            emailError = "Email transporter not configured";
+            console.error("❌ Cannot send email: Transporter not ready");
+            console.log("   Transporter exists:", !!transporter);
+            console.log("   Email configured:", emailConfigured);
         }
 
+        // Response based on email success
         if (emailSent) {
             res.json({
                 success: true,
-                message: "Account created! Check your email for the login code. (Check spam folder if not in inbox)"
+                message: "Account created! Check your email for the login code. (Please check spam folder if not in inbox)"
             });
         } else {
+            // Still return success but show code for development
             res.json({
                 success: true,
-                message: `Account created! Your code is: ${code}\n(Email failed - please save this code)`,
-                code: code
+                message: `Account created! However, we couldn't send the email. Please contact support.`,
+                code: process.env.NODE_ENV === 'development' ? code : null,
+                emailError: emailError
             });
         }
 
     } catch (error) {
         console.error("❌ Signup error:", error);
-        res.json({ success: false, message: "Server error" });
+        res.json({ success: false, message: "Server error: " + error.message });
     }
 });
 
