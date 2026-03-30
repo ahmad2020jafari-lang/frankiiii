@@ -400,29 +400,65 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // ========================
-// GMAIL EMAIL SETUP - DIRECT
+// EMAIL SETUP - WORKS ON BOTH LOCAL AND RENDER
 // ========================
-console.log("📧 Setting up Gmail...");
-console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Found: " + process.env.EMAIL_USER : "❌ Missing");
-console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "✅ Found (length: " + process.env.EMAIL_PASS.length + ")" : "❌ Missing");
+let transporter = null;
+let emailConfigured = false;
 
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+// Check if running on Render
+const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1';
 
-// Verify connection
-transporter.verify((error, success) => {
-    if (error) {
-        console.log("❌ Gmail connection FAILED:", error.message);
-        console.log("⚠️ Make sure you're using an App Password, not your regular Gmail password");
-    } else {
-        console.log("✅ Gmail is READY and WORKING!");
+console.log("📧 Setting up email...");
+console.log("Environment:", isRender ? "Render (using Brevo)" : "Local (using Gmail)");
+
+async function setupEmail() {
+    // For Render - use Brevo (works with Render's IPs)
+    if (isRender && process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS) {
+        try {
+            transporter = nodemailer.createTransport({
+                host: "smtp-relay.brevo.com",
+                port: 587,
+                secure: false,
+                auth: {
+                    user: process.env.BREVO_SMTP_USER,
+                    pass: process.env.BREVO_SMTP_PASS
+                }
+            });
+
+            await transporter.verify();
+            emailConfigured = true;
+            console.log("✅ Brevo email configured for Render!");
+            return;
+        } catch (error) {
+            console.log("❌ Brevo failed:", error.message);
+        }
     }
-});
+
+    // For Local - use Gmail (works locally)
+    if (!isRender && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        try {
+            transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                }
+            });
+
+            await transporter.verify();
+            emailConfigured = true;
+            console.log("✅ Gmail configured for local development!");
+            return;
+        } catch (error) {
+            console.log("❌ Gmail failed:", error.message);
+        }
+    }
+
+    console.log("⚠️ No email configured. Users will see codes on screen.");
+    emailConfigured = false;
+}
+
+setupEmail();
 
 function generateCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -451,37 +487,31 @@ app.get('/charlie-avatar.png', (req, res) => {
 });
 
 // TEST EMAIL ROUTE
-app.get("/send-test", async (req, res) => {
-    try {
-        const result = await transporter.sendMail({
-            from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
-            to: "ahmad2020jafari@gmail.com",
-            subject: "✅ TEST: TicTacToe Email Working",
-            html: `
-                <div style="font-family: Arial; padding: 30px; background: #0f2027; color: white; text-align: center;">
-                    <h1 style="color: #00eaff;">✅ Email is Working!</h1>
-                    <p>Your TicTacToe game can now send emails via Gmail.</p>
-                    <p>Time: ${new Date().toLocaleString()}</p>
-                    <p>You can now create accounts and receive login codes!</p>
-                </div>
-            `,
-            text: "Email is working! You can now create accounts."
+app.get("/test-email", async (req, res) => {
+    if (!transporter || !emailConfigured) {
+        return res.json({
+            success: false,
+            message: "Email not configured",
+            isRender: isRender,
+            config: {
+                brevo: process.env.BREVO_SMTP_USER ? "✅ Set" : "❌ Missing",
+                gmail: process.env.EMAIL_USER ? "✅ Set" : "❌ Missing"
+            }
         });
-        console.log("✅ Test email sent:", result.messageId);
-        res.send(`
-            <h1 style="color: green;">✅ Test Email Sent Successfully!</h1>
-            <p>Message ID: ${result.messageId}</p>
-            <p>Check your email inbox (and spam folder).</p>
-            <a href="/signup.html">Go to Signup</a>
-        `);
+    }
+
+    try {
+        const sender = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER;
+        const result = await transporter.sendMail({
+            from: `"TicTacToe Test" <${sender}>`,
+            to: "ahmad2020jafari@gmail.com",
+            subject: "Test Email from TicTacToe",
+            html: "<h1>Test Email</h1><p>If you get this, email is working!</p>",
+            text: "If you get this, email is working!"
+        });
+        res.json({ success: true, message: "Test email sent!", messageId: result.messageId });
     } catch (error) {
-        console.error("❌ Test failed:", error.message);
-        res.send(`
-            <h1 style="color: red;">❌ Test Failed</h1>
-            <p>Error: ${error.message}</p>
-            <p>Make sure you're using a Gmail App Password, not your regular password.</p>
-            <p>Get one at: https://myaccount.google.com/apppasswords</p>
-        `);
+        res.json({ success: false, error: error.message });
     }
 });
 
@@ -519,50 +549,54 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
         console.log("✅ User saved:", username);
         console.log("🔑 Code:", code);
 
-        // SEND EMAIL VIA GMAIL
-        console.log("📧 Sending email to:", email);
+        // Send email
+        let emailSent = false;
 
-        const mailResult = await transporter.sendMail({
-            from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "🔐 Your TicTacToe Login Code",
-            html: `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                </head>
-                <body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background: #0f2027;">
-                    <div style="max-width: 500px; margin: 50px auto; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 20px; padding: 40px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
-                        <div style="font-size: 64px; margin-bottom: 20px;">🎮</div>
-                        <h1 style="color: #00eaff; margin-bottom: 20px;">TicTacToe</h1>
-                        <p style="color: white; font-size: 18px;">Hello <strong style="color: #00eaff;">${username}</strong>,</p>
-                        <p style="color: white;">Your account has been successfully created!</p>
-                        <div style="background: rgba(0,234,255,0.15); padding: 25px; border-radius: 15px; margin: 30px 0;">
-                            <p style="color: #aaa; margin: 0 0 10px 0;">Your login code is:</p>
-                            <div style="font-size: 56px; font-weight: bold; color: #00eaff; letter-spacing: 8px; font-family: monospace;">${code}</div>
+        if (transporter && emailConfigured) {
+            try {
+                const sender = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER;
+
+                await transporter.sendMail({
+                    from: `"TicTacToe Game" <${sender}>`,
+                    to: email,
+                    subject: "🔐 Your TicTacToe Login Code",
+                    html: `
+                        <div style="font-family: Arial; max-width: 500px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px; text-align: center;">
+                            <h2 style="color: #00eaff;">🎮 TicTacToe</h2>
+                            <p style="color: white;">Hello <strong>${username}</strong>,</p>
+                            <p style="color: white;">Your account has been created!</p>
+                            <div style="background: rgba(0,234,255,0.2); padding: 20px; border-radius: 10px; margin: 20px 0;">
+                                <p style="color: white;">Your login code is:</p>
+                                <h1 style="color: #00eaff; font-size: 48px; letter-spacing: 5px;">${code}</h1>
+                            </div>
+                            <p style="color: white;">Use this code to login.</p>
                         </div>
-                        <p style="color: white;">Use this code to login to your account.</p>
-                        <p style="color: #888; font-size: 12px; margin-top: 30px;">This is an automated message. Please do not reply.</p>
-                    </div>
-                </body>
-                </html>
-            `,
-            text: `Welcome to TicTacToe!\n\nHello ${username},\n\nYour account has been created.\n\nYour login code is: ${code}\n\nUse this code to login to your account.`
-        });
+                    `,
+                    text: `Welcome to TicTacToe!\n\nHello ${username},\n\nYour login code is: ${code}\n\nUse this code to login.`
+                });
+                emailSent = true;
+                console.log("✅ Email sent to:", email);
+            } catch (error) {
+                console.error("❌ Email failed:", error.message);
+            }
+        }
 
-        console.log("✅ EMAIL SENT SUCCESSFULLY!");
-        console.log("📧 Message ID:", mailResult.messageId);
-
-        res.json({
-            success: true,
-            message: "Account created! Check your email for the login code.",
-            emailSent: true
-        });
+        if (emailSent) {
+            res.json({
+                success: true,
+                message: "Account created! Check your email for the login code. (Check spam folder)"
+            });
+        } else {
+            res.json({
+                success: true,
+                message: `Account created! Your code is: ${code}\n(Email failed - please save this code)`,
+                code: code
+            });
+        }
 
     } catch (error) {
         console.error("❌ Signup error:", error);
-        res.json({ success: false, message: "Server error: " + error.message });
+        res.json({ success: false, message: "Server error" });
     }
 });
 
