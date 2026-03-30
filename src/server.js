@@ -348,10 +348,8 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 const multer = require("multer");
+const nodemailer = require("nodemailer");
 const fs = require("fs");
-
-// Resend email
-const { Resend } = require('resend');
 
 const app = express();
 const server = http.createServer(app);
@@ -402,20 +400,35 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // ========================
-// EMAIL SETUP - RESEND (WORKS ON RENDER)
+// EMAIL SETUP - DIRECT GMAIL (WORKS FOR ALL EMAILS)
 // ========================
-let resend = null;
+let transporter = null;
 let emailConfigured = false;
 
-console.log("📧 Setting up Resend email...");
+console.log("📧 Setting up Gmail direct...");
+console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Found" : "❌ Missing");
+console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "✅ Found" : "❌ Missing");
 
-if (process.env.RESEND_API_KEY) {
-    resend = new Resend(process.env.RESEND_API_KEY);
-    emailConfigured = true;
-    console.log("✅ Resend email configured!");
-    console.log("API Key:", process.env.RESEND_API_KEY.substring(0, 10) + "...");
+if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+
+    transporter.verify((error, success) => {
+        if (error) {
+            console.log("❌ Gmail connection failed:", error.message);
+            emailConfigured = false;
+        } else {
+            console.log("✅ Gmail configured! Will send from:", process.env.EMAIL_USER);
+            emailConfigured = true;
+        }
+    });
 } else {
-    console.log("⚠️ RESEND_API_KEY not set. Users will see codes on screen.");
+    console.log("⚠️ Gmail credentials missing. Add EMAIL_USER and EMAIL_PASS in Render dashboard.");
 }
 
 function generateCode() {
@@ -444,20 +457,32 @@ app.get('/charlie-avatar.png', (req, res) => {
     res.send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ee5a24"/><rect x="35" y="30" width="30" height="25" rx="5" fill="white"/><circle cx="40" cy="40" r="3" fill="black"/><circle cx="60" cy="40" r="3" fill="black"/><path d="M30 70 L50 80 L70 70" stroke="white" stroke-width="3" fill="none"/></svg>`);
 });
 
-// TEST EMAIL ROUTE
+// Health check
+app.get("/ping", (req, res) => {
+    res.json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        emailConfigured: emailConfigured,
+        fromEmail: process.env.EMAIL_USER,
+        environment: process.env.RENDER ? "Render" : "Local"
+    });
+});
+
+// Test email route
 app.get("/test-email", async (req, res) => {
-    if (!resend || !emailConfigured) {
+    if (!transporter || !emailConfigured) {
         return res.json({
             success: false,
-            message: "Email not configured. Add RESEND_API_KEY to environment variables.",
-            apiKey: process.env.RESEND_API_KEY ? "✅ Set" : "❌ Missing"
+            message: "Email not configured. Add EMAIL_USER and EMAIL_PASS to environment variables.",
+            emailUser: process.env.EMAIL_USER ? "✅ Set" : "❌ Missing",
+            emailPass: process.env.EMAIL_PASS ? "✅ Set" : "❌ Missing"
         });
     }
 
     try {
-        const { data, error } = await resend.emails.send({
-            from: "TicTacToe <onboarding@resend.dev>",
-            to: ["ahmad2020jafari@gmail.com"],
+        await transporter.sendMail({
+            from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
+            to: "tictactoeplanwerk@gmail.com",
             subject: "✅ Test Email from TicTacToe",
             html: `
                 <div style="font-family: Arial; text-align: center; padding: 40px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px;">
@@ -468,10 +493,8 @@ app.get("/test-email", async (req, res) => {
             `
         });
 
-        if (error) throw error;
-
-        console.log("✅ Test email sent:", data?.id);
-        res.json({ success: true, message: "Test email sent! Check your inbox.", messageId: data?.id });
+        console.log("✅ Test email sent!");
+        res.json({ success: true, message: "Test email sent! Check your inbox/spam." });
     } catch (error) {
         console.error("❌ Test failed:", error.message);
         res.json({ success: false, error: error.message });
@@ -512,14 +535,14 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
         console.log("✅ User saved:", username);
         console.log("🔑 Code:", code);
 
-        // Send email via Resend
+        // Send email via Gmail
         let emailSent = false;
 
-        if (resend && emailConfigured) {
+        if (transporter && emailConfigured) {
             try {
-                const { data, error } = await resend.emails.send({
-                    from: "TicTacToe <onboarding@resend.dev>",
-                    to: [email],
+                await transporter.sendMail({
+                    from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
+                    to: email,
                     subject: "🔐 Your TicTacToe Login Code",
                     html: `
                         <div style="font-family: Arial; max-width: 500px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px; text-align: center;">
@@ -536,12 +559,8 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
                     `,
                     text: `Welcome to TicTacToe!\n\nHello ${username},\n\nYour login code is: ${code}\n\nUse this code to login.`
                 });
-
-                if (error) throw error;
-
                 emailSent = true;
                 console.log("✅ Email sent to:", email);
-                console.log("📧 Message ID:", data?.id);
             } catch (error) {
                 console.error("❌ Email failed:", error.message);
             }
@@ -586,7 +605,7 @@ app.post("/login", async (req, res) => {
 });
 
 // ========================
-// GAME LOGIC
+// GAME LOGIC (same as before)
 // ========================
 let waitingPlayer = null;
 let waitingTimeout = null;
