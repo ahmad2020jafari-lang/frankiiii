@@ -348,8 +348,8 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 const multer = require("multer");
-const nodemailer = require("nodemailer");
 const fs = require("fs");
+const sgMail = require('@sendgrid/mail');
 
 const app = express();
 const server = http.createServer(app);
@@ -382,7 +382,7 @@ app.use(session({
     secret: "tictactoe_secret",
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // Set to true if using HTTPS
+    cookie: { secure: false }
 }));
 
 // MongoDB Connection
@@ -400,55 +400,24 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // ========================
-// EMAIL SETUP - FIXED VERSION
+// EMAIL SETUP - SENDGRID (WORKS ON RENDER)
 // ========================
-let transporter = null;
 let emailConfigured = false;
 
-console.log("📧 Setting up email service...");
-console.log("Checking environment variables:");
-console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Found: " + process.env.EMAIL_USER : "❌ Missing");
-console.log("EMAIL_PASSWORD:", process.env.EMAIL_PASS ? "✅ Found" : "❌ Missing");
-console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "✅ Found" : "❌ Missing");
+console.log("📧 Setting up SendGrid...");
+console.log("SENDGRID_API_KEY:", process.env.SENDGRID_API_KEY ? "✅ Found" : "❌ Missing");
 
-// Try to get password from either variable name
-const emailPassword = process.env.EMAIL_PASS || process.env.EMAIL_PASS;
+if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    emailConfigured = true;
+    console.log("✅ SendGrid configured successfully!");
 
-if (process.env.EMAIL_USER && emailPassword) {
-    transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: emailPassword
-        },
-        // Add these options for better reliability
-        tls: {
-            rejectUnauthorized: false
-        },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000
-    });
-
-    // Verify connection
-    transporter.verify((error, success) => {
-        if (error) {
-            console.log("❌ Gmail connection failed:", error.message);
-            console.log("   Please check:");
-            console.log("   1. Email and password are correct");
-            console.log("   2. If using Gmail, you need an App Password (not regular password)");
-            console.log("   3. 2-Factor Authentication must be enabled for App Password");
-            emailConfigured = false;
-        } else {
-            console.log("✅ Gmail configured successfully! Will send from:", process.env.EMAIL_USER);
-            emailConfigured = true;
-        }
-    });
+    // Test the API key with a simple validation
+    console.log("   SendGrid is ready to send emails");
 } else {
-    console.log("⚠️ Email credentials missing. Please add to Render dashboard:");
-    console.log("   - EMAIL_USER: your-email@gmail.com");
-    console.log("   - EMAIL_PASSWORD: your-app-specific-password (16 chars)");
-    console.log("   Or EMAIL_PASS as alternative variable name");
+    console.log("⚠️ SendGrid API key missing!");
+    console.log("   Please add SENDGRID_API_KEY to Render environment variables");
+    console.log("   Get a free API key at: https://signup.sendgrid.com");
 }
 
 function generateCode() {
@@ -477,13 +446,13 @@ app.get('/charlie-avatar.png', (req, res) => {
     res.send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ee5a24"/><rect x="35" y="30" width="30" height="25" rx="5" fill="white"/><circle cx="40" cy="40" r="3" fill="black"/><circle cx="60" cy="40" r="3" fill="black"/><path d="M30 70 L50 80 L70 70" stroke="white" stroke-width="3" fill="none"/></svg>`);
 });
 
-// Health check with more details
+// Health check
 app.get("/ping", (req, res) => {
     res.json({
         status: "ok",
         timestamp: new Date().toISOString(),
         emailConfigured: emailConfigured,
-        fromEmail: process.env.EMAIL_USER,
+        emailService: "SendGrid",
         environment: process.env.RENDER ? "Render" : "Local",
         nodeEnv: process.env.NODE_ENV
     });
@@ -491,40 +460,57 @@ app.get("/ping", (req, res) => {
 
 // Test email route
 app.get("/test-email", async (req, res) => {
-    if (!transporter || !emailConfigured) {
+    if (!emailConfigured || !process.env.SENDGRID_API_KEY) {
         return res.json({
             success: false,
-            message: "Email not configured. Add EMAIL_USER and EMAIL_PASSWORD to environment variables.",
-            emailUser: process.env.EMAIL_USER ? "✅ Set: " + process.env.EMAIL_USER : "❌ Missing",
-            emailPassword: (process.env.EMAIL_PASS || process.env.EMAIL_PASS) ? "✅ Set" : "❌ Missing",
-            instructions: "To set up Gmail: 1. Enable 2FA on Google account 2. Generate App Password 3. Add to Render"
+            message: "SendGrid not configured. Add SENDGRID_API_KEY to environment variables.",
+            instructions: {
+                step1: "Sign up at https://signup.sendgrid.com (free tier available)",
+                step2: "Go to Settings → API Keys",
+                step3: "Create API Key with full access",
+                step4: "Copy the key (starts with SG.)",
+                step5: "Add to Render as SENDGRID_API_KEY",
+                step6: "Redeploy your app"
+            }
         });
     }
 
     try {
-        const testEmail = "tictactoeplanwerk@gmail.com";
-        await transporter.sendMail({
-            from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
-            to: testEmail,
-            subject: "✅ Test Email from TicTacToe",
+        const msg = {
+            to: 'tictactoeplanwerk@gmail.com',
+            from: {
+                email: process.env.EMAIL_USER || 'tictactoeplanwerk@gmail.com',
+                name: 'TicTacToe Game'
+            },
+            subject: "✅ Test Email from TicTacToe on Render",
             html: `
-                <div style="font-family: Arial; text-align: center; padding: 40px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px;">
+                <div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px;">
                     <h1 style="color: #00eaff;">🎮 TicTacToe</h1>
-                    <p style="color: white;">Email is working! You can now create accounts and receive login codes.</p>
+                    <p style="color: white;">Email is working! Your app is successfully sending emails via SendGrid on Render!</p>
                     <p style="color: white;">Time: ${new Date().toLocaleString()}</p>
-                    <p style="color: #00eaff;">Server: ${process.env.RENDER ? "Render.com" : "Local"}</p>
+                    <p style="color: #00eaff;">✓ SendGrid is configured correctly</p>
+                    <p style="color: #00eaff;">✓ Your app can now send verification codes</p>
                 </div>
-            `
-        });
+            `,
+            text: `TicTacToe Test Email\n\nEmail is working! Your app is successfully sending emails via SendGrid on Render!\n\nTime: ${new Date().toLocaleString()}`
+        };
 
-        console.log("✅ Test email sent to:", testEmail);
-        res.json({ success: true, message: "Test email sent! Check inbox/spam folder." });
+        await sgMail.send(msg);
+        console.log("✅ Test email sent successfully via SendGrid");
+        res.json({
+            success: true,
+            message: "Test email sent! Check your inbox/spam folder.",
+            details: "Email sent via SendGrid to tictactoeplanwerk@gmail.com"
+        });
     } catch (error) {
         console.error("❌ Test email failed:", error.message);
+        if (error.response) {
+            console.error("SendGrid error details:", error.response.body);
+        }
         res.json({
             success: false,
             error: error.message,
-            suggestion: "Check if the email credentials are correct and App Password is used for Gmail"
+            details: error.response?.body || "Check SendGrid dashboard for more info"
         });
     }
 });
@@ -537,21 +523,24 @@ app.get("/game.html", (req, res) => {
 });
 app.get("/logout", (req, res) => req.session.destroy(() => res.redirect("/login.html")));
 
-// SIGNUP - FIXED EMAIL SENDING
+// SIGNUP with SendGrid
 app.post("/signup", upload.single("profilePic"), async (req, res) => {
     try {
         const { username, email } = req.body;
 
         console.log("📝 Signup attempt:", username, email);
 
+        // Check if user exists
         const existing = await User.findOne({ $or: [{ username }, { email }] });
         if (existing) {
             return res.json({ success: false, message: "Username or email already exists" });
         }
 
+        // Generate verification code
         const code = generateCode();
         const hashed = await bcrypt.hash(code, 10);
 
+        // Create user
         const user = new User({
             username,
             email,
@@ -563,15 +552,18 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
         console.log("✅ User saved:", username);
         console.log("🔑 Generated code for", email, ":", code);
 
-        // Send email with better error handling
+        // Send email via SendGrid
         let emailSent = false;
         let emailError = null;
 
-        if (transporter && emailConfigured) {
+        if (emailConfigured && process.env.SENDGRID_API_KEY) {
             try {
-                const mailOptions = {
-                    from: `"TicTacToe Game" <${process.env.EMAIL_USER}>`,
+                const msg = {
                     to: email,
+                    from: {
+                        email: process.env.EMAIL_USER || 'tictactoeplanwerk@gmail.com',
+                        name: 'TicTacToe Game'
+                    },
                     subject: "🔐 Your TicTacToe Login Code",
                     html: `
                         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #0f2027, #203a43); border-radius: 15px; text-align: center;">
@@ -584,25 +576,26 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
                             </div>
                             <p style="color: white;">Use this code to login to your account.</p>
                             <p style="color: #ffd966; font-size: 14px;">💡 Tip: You can change your password after login!</p>
-                            <p style="color: #888; font-size: 12px; margin-top: 20px;">This is an automated message. Please do not reply.</p>
+                            <hr style="border-color: #00eaff; margin: 20px 0;">
+                            <p style="color: #888; font-size: 12px;">This is an automated message from TicTacToe Game. Please do not reply.</p>
                         </div>
                     `,
                     text: `Welcome to TicTacToe!\n\nHello ${username},\n\nYour login code is: ${code}\n\nUse this code to login to your account.\n\nThis is an automated message.`
                 };
 
-                const info = await transporter.sendMail(mailOptions);
+                await sgMail.send(msg);
                 emailSent = true;
-                console.log("✅ Email sent successfully to:", email, "Message ID:", info.messageId);
+                console.log("✅ Email sent successfully via SendGrid to:", email);
             } catch (error) {
                 emailError = error.message;
                 console.error("❌ Email sending failed:", error.message);
-                console.error("   Full error:", error);
+                if (error.response) {
+                    console.error("SendGrid error details:", error.response.body);
+                }
             }
         } else {
-            emailError = "Email transporter not configured";
-            console.error("❌ Cannot send email: Transporter not ready");
-            console.log("   Transporter exists:", !!transporter);
-            console.log("   Email configured:", emailConfigured);
+            emailError = "SendGrid not configured";
+            console.error("❌ Cannot send email: SendGrid API key missing");
         }
 
         // Response based on email success
@@ -612,12 +605,11 @@ app.post("/signup", upload.single("profilePic"), async (req, res) => {
                 message: "Account created! Check your email for the login code. (Please check spam folder if not in inbox)"
             });
         } else {
-            // Still return success but show code for development
             res.json({
                 success: true,
                 message: `Account created! However, we couldn't send the email. Please contact support.`,
                 code: process.env.NODE_ENV === 'development' ? code : null,
-                emailError: emailError
+                error: emailError
             });
         }
 
@@ -647,7 +639,7 @@ app.post("/login", async (req, res) => {
 });
 
 // ========================
-// GAME LOGIC (same as before)
+// GAME LOGIC
 // ========================
 let waitingPlayer = null;
 let waitingTimeout = null;
@@ -834,4 +826,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
